@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { UserNav } from '@/components/auth/UserNav';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ export function AppHeader() {
         <Link href="/dashboard" className="mr-6 flex items-center space-x-2">
           <Ticket className="h-6 w-6 text-primary" />
           <span className="font-bold font-headline sm:inline-block text-lg">
-            BBMNET Support Tracker
+            BBMNET Rastreador de Suporte
           </span>
         </Link>
         <div className="flex flex-1 items-center justify-end space-x-4">

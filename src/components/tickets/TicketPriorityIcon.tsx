@@ -1,5 +1,6 @@
+
 import type { Priority } from '@/types';
-import { ArrowDown, Minus, ArrowUp, AlertTriangle } from 'lucide-react';
+import { ArrowDown, Minus, ArrowUp, AlertTriangle, ChevronUpSquare } from 'lucide-react'; // ChevronUpSquare for Critico
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -10,12 +11,17 @@ interface TicketPriorityIconProps {
 
 export function TicketPriorityIcon({ priority, size = 4 }: TicketPriorityIconProps) {
   const iconConfig = {
-    Low: { icon: <ArrowDown />, color: 'text-green-600', label: 'Low Priority' },
-    Medium: { icon: <Minus />, color: 'text-yellow-600', label: 'Medium Priority' },
-    High: { icon: <AlertTriangle />, color: 'text-red-600', label: 'High Priority' },
+    Baixo: { icon: <ArrowDown />, color: 'text-green-600', label: 'Prioridade Baixa' },
+    Normal: { icon: <Minus />, color: 'text-yellow-600', label: 'Prioridade Normal' },
+    Alto: { icon: <ArrowUp />, color: 'text-orange-600', label: 'Prioridade Alta' }, // Changed from AlertTriangle to ArrowUp for 'Alto'
+    Critico: { icon: <ChevronUpSquare />, color: 'text-red-600', label: 'Prioridade Crítica' }, // Using ChevronUpSquare for 'Critico'
+    // Fallbacks for old values if they exist in data
+    Low: { icon: <ArrowDown />, color: 'text-green-600', label: 'Prioridade Baixa (Legado)' },
+    Medium: { icon: <Minus />, color: 'text-yellow-600', label: 'Prioridade Normal (Legado)' },
+    High: { icon: <ArrowUp />, color: 'text-orange-600', label: 'Prioridade Alta (Legado)' },
   };
 
-  const config = iconConfig[priority] || iconConfig.Medium;
+  const config = iconConfig[priority] || iconConfig.Normal; // Default to Normal if somehow unknown
   const iconClassName = cn(`h-${size} w-${size}`, config.color);
 
   return (

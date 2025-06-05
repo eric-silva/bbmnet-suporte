@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -5,10 +6,6 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { TicketForm } from './TicketForm';
 import { createTicketAction } from '@/app/actions/tickets';
@@ -22,9 +19,8 @@ export function CreateTicketButton() {
   const handleSubmit = async (formData: FormData) => {
     const result = await createTicketAction(formData);
     if (result.success) {
-      setOpen(false); // Close dialog on success
+      setOpen(false); 
     }
-    // Toast notifications are handled within TicketForm now
     return result;
   };
 
@@ -33,11 +29,10 @@ export function CreateTicketButton() {
       <DialogTrigger asChild>
         <Button className="font-headline">
           <PlusCircle className="mr-2 h-5 w-5" />
-          Create New Ticket
+          Criar Novo Ticket
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
-        {/* DialogHeader and DialogDescription moved inside TicketForm for better layout control */}
         <TicketForm 
           onSubmit={handleSubmit} 
           onCancel={() => setOpen(false)} 

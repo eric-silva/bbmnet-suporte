@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useCallback } from 'react';
@@ -27,7 +28,7 @@ export function AiAssigneeSuggestion({
 
   const handleSuggestAssignee = useCallback(async () => {
     if (!problemDescription.trim() || problemDescription.length < 20) {
-      setError('Please provide a more detailed problem description (at least 20 characters).');
+      setError('Por favor, forneça uma descrição mais detalhada do problema (pelo menos 20 caracteres).');
       setSuggestion(null);
       return;
     }
@@ -39,8 +40,8 @@ export function AiAssigneeSuggestion({
       const result = await suggestAssignee(input);
       setSuggestion(result);
     } catch (err) {
-      console.error('Error suggesting assignee:', err);
-      setError('Failed to get AI suggestion. Please try again.');
+      console.error('Erro ao sugerir responsável:', err);
+      setError('Falha ao obter sugestão da IA. Por favor, tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -49,7 +50,7 @@ export function AiAssigneeSuggestion({
   const handleAcceptSuggestion = () => {
     if (suggestion) {
       onSuggestionAccept(suggestion.assigneeEmail);
-      setSuggestion(null); // Clear suggestion after accepting
+      setSuggestion(null); 
     }
   };
 
@@ -58,10 +59,10 @@ export function AiAssigneeSuggestion({
       <CardHeader>
         <CardTitle className="flex items-center text-lg font-headline">
           <Sparkles className="mr-2 h-5 w-5 text-accent" />
-          AI Assignee Suggestion
+          Sugestão de Responsável (IA)
         </CardTitle>
         <CardDescription>
-          Let AI suggest an assignee based on the problem description.
+          Deixe a IA sugerir um responsável com base na descrição do problema.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -77,12 +78,12 @@ export function AiAssigneeSuggestion({
           ) : (
             <Sparkles className="mr-2 h-4 w-4" />
           )}
-          Suggest Assignee
+          Sugerir Responsável
         </Button>
 
         {error && (
           <Alert variant="destructive" className="mb-4">
-            <AlertTitle>Error</AlertTitle>
+            <AlertTitle>Erro</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -90,13 +91,13 @@ export function AiAssigneeSuggestion({
         {suggestion && (
           <Alert variant="default" className="bg-primary/10 border-primary/30">
             <Sparkles className="h-4 w-4 text-primary" />
-            <AlertTitle className="font-headline text-primary">AI Suggestion</AlertTitle>
+            <AlertTitle className="font-headline text-primary">Sugestão da IA</AlertTitle>
             <AlertDescription className="space-y-2">
               <p>
-                <strong>Assignee:</strong> {suggestion.assigneeEmail}
+                <strong>Responsável:</strong> {suggestion.assigneeEmail}
               </p>
               <p>
-                <strong>Reason:</strong> {suggestion.reason}
+                <strong>Motivo:</strong> {suggestion.reason}
               </p>
               {currentAssignee !== suggestion.assigneeEmail && (
                  <Button
@@ -106,11 +107,11 @@ export function AiAssigneeSuggestion({
                     type="button"
                   >
                     <UserCheck className="mr-2 h-4 w-4" />
-                    Accept Suggestion
+                    Aceitar Sugestão
                   </Button>
               )}
              {currentAssignee === suggestion.assigneeEmail && (
-                <p className="text-sm text-green-700 font-medium mt-2">This assignee is already selected.</p>
+                <p className="text-sm text-green-700 font-medium mt-2">Este responsável já está selecionado.</p>
              )}
             </AlertDescription>
           </Alert>

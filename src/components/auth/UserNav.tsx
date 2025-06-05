@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -29,7 +30,7 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border">
-            {image && <AvatarImage src={image} alt={name || email || 'User avatar'} />}
+            {image && <AvatarImage src={image} alt={name || email || 'Avatar do usuário'} />}
             <AvatarFallback>{fallbackName}</AvatarFallback>
           </Avatar>
         </Button>
@@ -43,11 +44,11 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          {/* Add other items like Profile, Settings if needed */}
+          {/* Adicionar outros itens como Perfil, Configurações se necessário */}
         </DropdownMenuGroup>
         <DropdownMenuItem onClick={() => signOut()}>
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>Sair</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

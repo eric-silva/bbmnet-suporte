@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ export function SignInButton() {
   return (
     <Button onClick={() => signIn()} size="lg" className="font-headline">
       <LogIn className="mr-2 h-5 w-5" />
-      Sign in with Microsoft
+      Entrar com Microsoft
     </Button>
   );
 }

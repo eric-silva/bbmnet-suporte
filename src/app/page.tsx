@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -20,7 +21,7 @@ export default function HomePage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
         <Ticket className="h-16 w-16 text-primary mb-6 animate-pulse" />
-        <p className="text-xl text-foreground">Loading application...</p>
+        <p className="text-xl text-foreground">Carregando aplicação...</p>
       </div>
     );
   }
@@ -30,18 +31,18 @@ export default function HomePage() {
       <div className="max-w-md w-full text-center bg-card p-8 rounded-xl shadow-2xl">
         <Ticket className="h-16 w-16 text-primary mx-auto mb-6" />
         <h1 className="text-4xl font-bold mb-4 font-headline text-primary">
-          BBMNET Support Tracker
+          BBMNET Rastreador de Suporte
         </h1>
         <p className="text-muted-foreground mb-8 text-lg">
-          Please sign in to manage support tickets.
+          Por favor, faça login para gerenciar os tickets de suporte.
         </p>
         <SignInButton />
         <p className="mt-6 text-xs text-muted-foreground">
-          Access restricted to authorized domains.
+          Acesso restrito a domínios autorizados.
         </p>
       </div>
        <footer className="absolute bottom-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} BBMNET. All rights reserved.
+          &copy; {new Date().getFullYear()} BBMNET. Todos os direitos reservados.
         </footer>
     </div>
   );

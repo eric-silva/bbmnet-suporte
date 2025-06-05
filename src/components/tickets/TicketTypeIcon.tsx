@@ -1,5 +1,6 @@
+
 import type { TicketType } from '@/types';
-import { Bug, Lightbulb, HelpCircle, MoreHorizontal } from 'lucide-react';
+import { Settings, Bug, Lightbulb, Layers, Wrench, HelpCircle, MoreHorizontal } from 'lucide-react'; // Added Settings, Layers, Wrench
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -10,13 +11,18 @@ interface TicketTypeIconProps {
 
 export function TicketTypeIcon({ type, size = 4 }: TicketTypeIconProps) {
   const iconConfig = {
-    Bug: { icon: <Bug />, label: 'Bug Report' },
-    'Feature Request': { icon: <Lightbulb />, label: 'Feature Request' },
-    Question: { icon: <HelpCircle />, label: 'Question' },
-    Other: { icon: <MoreHorizontal />, label: 'Other' },
+    Intervenção: { icon: <Settings />, label: 'Intervenção' },
+    Bug: { icon: <Bug />, label: 'Bug' },
+    Melhoria: { icon: <Lightbulb />, label: 'Melhoria' },
+    Backlog: { icon: <Layers />, label: 'Backlog' },
+    'Apoio Técnico': { icon: <Wrench />, label: 'Apoio Técnico' },
+    // Fallbacks for old values if they exist in data
+    'Feature Request': { icon: <Lightbulb />, label: 'Solicitação de Funcionalidade (Legado)' },
+    Question: { icon: <HelpCircle />, label: 'Pergunta (Legado)' },
+    Other: { icon: <MoreHorizontal />, label: 'Outro (Legado)' },
   };
 
-  const config = iconConfig[type] || iconConfig.Other;
+  const config = iconConfig[type] || { icon: <MoreHorizontal />, label: type }; // Fallback to type itself if unknown
   const iconClassName = cn(`h-${size} w-${size}`, "text-muted-foreground");
 
 
@@ -33,3 +39,4 @@ export function TicketTypeIcon({ type, size = 4 }: TicketTypeIconProps) {
     </TooltipProvider>
   );
 }
+

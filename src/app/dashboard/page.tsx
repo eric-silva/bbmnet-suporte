@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useEffect, useState, useTransition } from 'react';
 import { TicketDataTable } from '@/components/tickets/TicketDataTable';
@@ -26,10 +27,10 @@ export default function DashboardPage() {
       const fetchedTickets = await getTickets();
       setTickets(fetchedTickets);
     } catch (error) {
-      console.error("Failed to fetch tickets:", error);
+      console.error("Falha ao buscar tickets:", error);
       toast({
-        title: "Error fetching tickets",
-        description: "Could not load ticket data. Please try again later.",
+        title: "Erro ao buscar tickets",
+        description: "Não foi possível carregar os dados dos tickets. Por favor, tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
@@ -48,14 +49,13 @@ export default function DashboardPage() {
   };
 
   const handleUpdateTicket = async (formData: FormData) => {
-    if (!selectedTicket) return { success: false, error: 'No ticket selected for update.' };
+    if (!selectedTicket) return { success: false, error: 'Nenhum ticket selecionado para atualização.' };
     const result = await updateTicketAction(selectedTicket.id, formData);
     if (result.success) {
       setIsEditModalOpen(false);
       setSelectedTicket(null);
-      fetchTickets(); // Re-fetch tickets to update the list
+      fetchTickets(); 
     }
-    // Toast notifications are handled within TicketForm
     return result;
   };
   
@@ -80,7 +80,7 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto py-10 px-4 md:px-6">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold font-headline text-foreground">Support Tickets</h1>
+        <h1 className="text-3xl font-bold font-headline text-foreground">Tickets de Suporte</h1>
         <CreateTicketButton />
       </div>
       <TicketDataTable columns={columns} data={tickets} />

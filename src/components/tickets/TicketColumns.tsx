@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ColumnDef } from '@tanstack/react-table';
@@ -10,9 +11,8 @@ import { TicketTypeIcon } from './TicketTypeIcon';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PERMITTED_ASSIGNEES } from '@/lib/constants';
 
-// Helper to find assignee name
 const getAssigneeName = (email: string | null) => {
-  if (!email) return 'Unassigned';
+  if (!email) return 'Não atribuído';
   const assignee = PERMITTED_ASSIGNEES.find(a => a.email === email);
   return assignee ? assignee.name : email;
 };
@@ -30,7 +30,7 @@ export const getTicketColumns = (
           (table.getIsSomePageRowsSelected() && 'indeterminate')
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
+        aria-label="Selecionar todos"
         className="translate-y-[2px]"
       />
     ),
@@ -38,7 +38,7 @@ export const getTicketColumns = (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
+        aria-label="Selecionar linha"
         className="translate-y-[2px]"
       />
     ),
@@ -60,7 +60,7 @@ export const getTicketColumns = (
   },
   {
     accessorKey: 'problemDescription',
-    header: 'Problem Description',
+    header: 'Descrição do Problema',
     cell: ({ row }) => {
       const description = row.getValue('problemDescription') as string;
       return <div className="truncate max-w-xs" title={description}>{description}</div>;
@@ -73,7 +73,7 @@ export const getTicketColumns = (
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
-        Priority
+        Prioridade
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
@@ -89,7 +89,7 @@ export const getTicketColumns = (
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
-        Type
+        Tipo
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
@@ -105,7 +105,7 @@ export const getTicketColumns = (
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
-        Status
+        Situação
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
@@ -116,12 +116,20 @@ export const getTicketColumns = (
   },
   {
     accessorKey: 'solicitanteName',
-    header: 'Requester',
+    header: 'Solicitante',
   },
   {
     accessorKey: 'responsavelEmail',
-    header: 'Assignee',
+    header: 'Responsável',
     cell: ({ row }) => getAssigneeName(row.getValue('responsavelEmail')),
+  },
+    {
+    accessorKey: 'ambiente',
+    header: 'Ambiente',
+  },
+  {
+    accessorKey: 'origem',
+    header: 'Origem',
   },
   {
     accessorKey: 'createdAt',
@@ -130,7 +138,7 @@ export const getTicketColumns = (
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
-        Created At
+        Abertura
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
@@ -141,7 +149,7 @@ export const getTicketColumns = (
     cell: ({ row }) => (
       <Button variant="ghost" size="icon" onClick={() => onEdit(row.original)}>
         <Edit2 className="h-4 w-4" />
-        <span className="sr-only">Edit Ticket</span>
+        <span className="sr-only">Editar Ticket</span>
       </Button>
     ),
   },

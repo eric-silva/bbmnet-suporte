@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -29,9 +30,9 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ticket } from '@/types';
+import type { Ticket } from '@/types';
 import { ChevronDown } from 'lucide-react';
-import { DataTableFacetedFilter } from './DataTableFacetedFilter'; // To be created
+import { DataTableFacetedFilter } from './DataTableFacetedFilter';
 import { ticketStatuses, priorities, ticketTypes } from '@/types';
 
 
@@ -66,7 +67,7 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    globalFilterFn: 'includesString', // Simple global filter
+    globalFilterFn: 'includesString', 
   });
   
   const isFiltered = table.getState().columnFilters.length > 0 || globalFilter.length > 0;
@@ -76,7 +77,7 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
     <div className="space-y-4 p-4 bg-card rounded-lg shadow-lg">
       <div className="flex items-center justify-between gap-2">
         <Input
-          placeholder="Filter all columns..."
+          placeholder="Filtrar todas as colunas..."
           value={globalFilter ?? ''}
           onChange={(event) => setGlobalFilter(event.target.value)}
           className="max-w-sm h-10"
@@ -85,28 +86,28 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
           {table.getColumn("status") && (
             <DataTableFacetedFilter
               column={table.getColumn("status")}
-              title="Status"
+              title="Situação"
               options={ticketStatuses.map(s => ({label: s, value: s}))}
             />
           )}
           {table.getColumn("priority") && (
             <DataTableFacetedFilter
               column={table.getColumn("priority")}
-              title="Priority"
+              title="Prioridade"
               options={priorities.map(p => ({label: p, value: p}))}
             />
           )}
           {table.getColumn("type") && (
             <DataTableFacetedFilter
               column={table.getColumn("type")}
-              title="Type"
+              title="Tipo"
               options={ticketTypes.map(t => ({label: t, value: t}))}
             />
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="ml-auto h-10">
-                Columns <ChevronDown className="ml-2 h-4 w-4" />
+                Colunas <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -123,7 +124,13 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
                         column.toggleVisibility(!!value)
                       }
                     >
-                      {column.id}
+                      {column.id === 'problemDescription' ? 'Descrição do Problema' : 
+                       column.id === 'solicitanteName' ? 'Solicitante' :
+                       column.id === 'responsavelEmail' ? 'Responsável' :
+                       column.id === 'createdAt' ? 'Abertura' :
+                       column.id === 'ambiente' ? 'Ambiente' :
+                       column.id === 'origem' ? 'Origem' :
+                       column.id}
                     </DropdownMenuCheckboxItem>
                   );
                 })}
@@ -173,7 +180,7 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {isFiltered ? "No tickets match your filters." : "No tickets found."}
+                  {isFiltered ? "Nenhum ticket corresponde aos seus filtros." : "Nenhum ticket encontrado."}
                 </TableCell>
               </TableRow>
             )}
@@ -182,8 +189,8 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{' '}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
+          {table.getFilteredSelectedRowModel().rows.length} de{' '}
+          {table.getFilteredRowModel().rows.length} linha(s) selecionadas.
         </div>
         <Button
           variant="outline"
@@ -191,7 +198,7 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
         >
-          Previous
+          Anterior
         </Button>
         <Button
           variant="outline"
@@ -199,7 +206,7 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
         >
-          Next
+          Próxima
         </Button>
       </div>
     </div>

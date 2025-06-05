@@ -1,3 +1,4 @@
+
 'use client';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { useSession } from '@/components/auth/AppProviders';
@@ -21,7 +22,7 @@ export default function DashboardLayout({
   if (session.status === 'loading' || session.status === 'unauthenticated') {
     return (
        <div className="flex h-screen items-center justify-center">
-        <p>Loading session...</p>
+        <p>Carregando sessão...</p>
       </div>
     );
   }
@@ -35,7 +36,7 @@ export default function DashboardLayout({
       <footer className="py-6 md:px-8 md:py-0 bg-background border-t">
         <div className="container flex flex-col items-center justify-between gap-4 md:h-20 md:flex-row">
           <p className="text-balance text-center text-sm leading-loose text-muted-foreground md:text-left">
-            Built by Your Team. Powered by Next.js and ShadCN UI.
+            Construído por Sua Equipe. Desenvolvido com Next.js e ShadCN UI.
           </p>
         </div>
       </footer>

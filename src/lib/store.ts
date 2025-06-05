@@ -1,51 +1,67 @@
+
 import type { Ticket } from '@/types';
 import { MOCK_USER, PERMITTED_ASSIGNEES } from './constants';
 
-// In-memory store for tickets
+// Repositório em memória para tickets
 let tickets: Ticket[] = [
   {
     id: 'TKT-001',
-    problemDescription: 'Login button not working on Safari browser. Users are unable to access their accounts.',
-    priority: 'High',
+    problemDescription: 'Botão de login não funciona no navegador Safari. Usuários não conseguem acessar suas contas.',
+    priority: 'Crítico',
     type: 'Bug',
     solicitanteEmail: MOCK_USER.email,
     solicitanteName: MOCK_USER.name,
     responsavelEmail: PERMITTED_ASSIGNEES[0]?.email || null,
-    status: 'Open',
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+    status: 'Para fazer',
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 dias atrás
     updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    evidencias: "Captura de tela do erro no Safari anexa via link: http://example.com/safari-bug.png",
+    ambiente: "Produção",
+    origem: "Sala de Negociação",
+    inicioAtendimento: null,
+    terminoAtendimento: null,
   },
   {
     id: 'TKT-002',
-    problemDescription: 'Need an export to CSV feature for the user report. This will help in monthly analysis.',
-    priority: 'Medium',
-    type: 'Feature Request',
-    solicitanteEmail: 'another@example.com',
-    solicitanteName: 'Another User',
+    problemDescription: 'Necessidade de funcionalidade para exportar para CSV o relatório de usuários. Isso ajudará na análise mensal.',
+    priority: 'Alto',
+    type: 'Melhoria',
+    solicitanteEmail: 'outro@example.com',
+    solicitanteName: 'Outro Usuário',
     responsavelEmail: PERMITTED_ASSIGNEES[1]?.email || null,
-    status: 'In Progress',
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+    status: 'Em Andamento',
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 dias atrás
+    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 dia atrás
+    inicioAtendimento: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    terminoAtendimento: null,
+    evidencias: "Documento de requisitos: http://example.com/export-csv-req.pdf",
+    ambiente: "Homologação",
+    origem: "Licitações",
   },
   {
     id: 'TKT-003',
-    problemDescription: 'How do I reset my password? I cannot find the option in the settings page.',
-    priority: 'Low',
-    type: 'Question',
+    problemDescription: 'Como faço para redefinir minha senha? Não consigo encontrar a opção na página de configurações.',
+    priority: 'Normal',
+    type: 'Apoio Técnico',
     solicitanteEmail: MOCK_USER.email,
     solicitanteName: MOCK_USER.name,
     responsavelEmail: PERMITTED_ASSIGNEES[2]?.email || null,
-    status: 'Resolved',
-    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
-    updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-    resolutionDetails: 'Provided instructions to reset password via email link.',
+    status: 'Finalizado',
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 dias atrás
+    updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 dias atrás
+    resolutionDetails: 'Instruções fornecidas para redefinir a senha através do link de e-mail.',
+    evidencias: "Usuário relatou dificuldade em encontrar a opção.",
+    ambiente: "Produção",
+    origem: "Cadastramento",
+    inicioAtendimento: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
+    terminoAtendimento: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
   },
 ];
 
 export const getTicketsStore = (): Ticket[] => tickets;
 
 export const addTicketToStore = (ticket: Ticket): void => {
-  tickets.unshift(ticket); // Add to the beginning of the array
+  tickets.unshift(ticket); 
 };
 
 export const updateTicketInStore = (updatedTicket: Ticket): boolean => {
@@ -61,13 +77,17 @@ export const findTicketById = (id: string): Ticket | undefined => {
   return tickets.find(t => t.id === id);
 };
 
-// Helper to generate unique IDs for new tickets
 export const generateTicketId = (): string => {
-  const latestTicket = tickets.length > 0 ? tickets[0] : null;
-  let newIdNumber = 1;
-  if (latestTicket && latestTicket.id.startsWith('TKT-')) {
-    const lastIdNumber = parseInt(latestTicket.id.split('-')[1] || '0', 10);
-    newIdNumber = lastIdNumber + 1;
-  }
+  // Encontra o maior número de ID existente para evitar colisões se a lista for reordenada.
+  let maxIdNumber = 0;
+  tickets.forEach(ticket => {
+    if (ticket.id.startsWith('TKT-')) {
+      const idNumber = parseInt(ticket.id.split('-')[1] || '0', 10);
+      if (idNumber > maxIdNumber) {
+        maxIdNumber = idNumber;
+      }
+    }
+  });
+  const newIdNumber = maxIdNumber + 1;
   return `TKT-${String(newIdNumber).padStart(3, '0')}`;
 };
