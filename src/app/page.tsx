@@ -31,7 +31,7 @@ export default function HomePage() {
       <div className="max-w-md w-full text-center bg-card p-8 rounded-xl shadow-2xl">
         <Ticket className="h-16 w-16 text-primary mx-auto mb-6" />
         <h1 className="text-4xl font-bold mb-4 font-headline text-primary">
-          BBMNET Rastreador de Suporte
+          BBMNET Suporte
         </h1>
         <p className="text-muted-foreground mb-8 text-lg">
           Por favor, faça login para gerenciar os tickets de suporte.

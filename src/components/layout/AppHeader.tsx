@@ -11,7 +11,7 @@ export function AppHeader() {
         <Link href="/dashboard" className="mr-6 flex items-center space-x-2">
           <Ticket className="h-6 w-6 text-primary" />
           <span className="font-bold font-headline sm:inline-block text-lg">
-            BBMNET Rastreador de Suporte
+            BBMNET Suporte
           </span>
         </Link>
         <div className="flex flex-1 items-center justify-end space-x-4">

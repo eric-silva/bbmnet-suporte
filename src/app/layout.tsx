@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AppProviders } from '@/components/auth/AppProviders';
 
 export const metadata: Metadata = {
-  title: 'BBMNET Rastreador de Suporte',
+  title: 'BBMNET Suporte',
   description: 'Rastreie tickets de suporte para BBMNET',
 };
 
