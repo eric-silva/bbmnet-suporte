@@ -1,0 +1,102 @@
+'use client';
+import React, { useEffect, useState, useTransition } from 'react';
+import { TicketDataTable } from '@/components/tickets/TicketDataTable';
+import { getTicketColumns } from '@/components/tickets/TicketColumns';
+import { CreateTicketButton } from '@/components/tickets/CreateTicketButton';
+import { getTickets, updateTicketAction } from '@/app/actions/tickets';
+import type { Ticket } from '@/types';
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent
+} from '@/components/ui/dialog';
+import { TicketForm } from '@/components/tickets/TicketForm';
+import { Skeleton } from '@/components/ui/skeleton';
+
+export default function DashboardPage() {
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const { toast } = useToast();
+
+  const fetchTickets = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedTickets = await getTickets();
+      setTickets(fetchedTickets);
+    } catch (error) {
+      console.error("Failed to fetch tickets:", error);
+      toast({
+        title: "Error fetching tickets",
+        description: "Could not load ticket data. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTickets();
+  }, []);
+
+
+  const handleEdit = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateTicket = async (formData: FormData) => {
+    if (!selectedTicket) return { success: false, error: 'No ticket selected for update.' };
+    const result = await updateTicketAction(selectedTicket.id, formData);
+    if (result.success) {
+      setIsEditModalOpen(false);
+      setSelectedTicket(null);
+      fetchTickets(); // Re-fetch tickets to update the list
+    }
+    // Toast notifications are handled within TicketForm
+    return result;
+  };
+  
+  const columns = React.useMemo(() => getTicketColumns(handleEdit), [handleEdit]);
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-10 px-4 md:px-6">
+        <div className="flex justify-between items-center mb-8">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-10 w-36" />
+        </div>
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-10 px-4 md:px-6">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold font-headline text-foreground">Support Tickets</h1>
+        <CreateTicketButton />
+      </div>
+      <TicketDataTable columns={columns} data={tickets} />
+
+      {selectedTicket && (
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+             <TicketForm
+                ticket={selectedTicket}
+                onSubmit={handleUpdateTicket}
+                onCancel={() => setIsEditModalOpen(false)}
+                formMode="edit"
+              />
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}
