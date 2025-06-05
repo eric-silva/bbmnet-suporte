@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogTrigger, // Added DialogTrigger here
 } from '@/components/ui/dialog';
 import { TicketForm } from './TicketForm';
 import { createTicketAction } from '@/app/actions/tickets';
@@ -19,9 +20,24 @@ export function CreateTicketButton() {
   const handleSubmit = async (formData: FormData) => {
     const result = await createTicketAction(formData);
     if (result.success) {
-      setOpen(false); 
+      toast({
+        title: "Ticket Criado",
+        description: `O ticket ${result.ticket?.id} foi criado com sucesso.`,
+        variant: 'default',
+      });
+      setOpen(false);
+    } else {
+      const errorMessages = result.error ?
+        typeof result.error === 'string' ? result.error :
+        Object.values(result.error).flat().join('\n')
+        : 'Ocorreu um erro desconhecido.';
+      toast({
+        title: "Erro ao Criar Ticket",
+        description: errorMessages,
+        variant: 'destructive',
+      });
     }
-    return result;
+    return result; // Always return result to ensure the form can handle it
   };
 
   return (
@@ -33,10 +49,10 @@ export function CreateTicketButton() {
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
-        <TicketForm 
-          onSubmit={handleSubmit} 
-          onCancel={() => setOpen(false)} 
-          formMode="create" 
+        <TicketForm
+          onSubmit={handleSubmit}
+          onCancel={() => setOpen(false)}
+          formMode="create"
         />
       </DialogContent>
     </Dialog>
