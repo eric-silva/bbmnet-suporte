@@ -44,7 +44,7 @@
     "firebase": "^11.8.1",
     "genkit": "^1.8.0",
     "lucide-react": "^0.475.0",
-    "next": "15.2.3",
+    "next": "^15.2.3",
     "patch-package": "^8.0.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
@@ -63,5 +63,22 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
-  }
+  },
+  "description": "This is a NextJS starter in Firebase Studio.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eric-silva/bbmnet-suporte.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/eric-silva/bbmnet-suporte/issues"
+  },
+  "homepage": "https://github.com/eric-silva/bbmnet-suporte#readme"
 }

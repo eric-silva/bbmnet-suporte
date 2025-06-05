@@ -16,15 +16,15 @@ import { PERMITTED_ASSIGNEES, MOCK_USER } from '@/lib/constants';
 
 const TicketSchema = z.object({
   problemDescription: z.string().min(10, 'A descrição do problema deve ter pelo menos 10 caracteres.'),
-  priority: z.enum(priorities),
-  type: z.enum(ticketTypes),
+  priority: z.enum(priorities as [string, ...string[]]),
+  type: z.enum(ticketTypes as [string, ...string[]]),
   responsavelEmail: z.string().email({ message: "E-mail inválido." }).nullable().or(z.literal('')),
-  status: z.enum(ticketStatuses).optional(), // Obrigatório na edição, opcional na criação (default 'Para fazer')
+  status: z.enum(ticketStatuses as [string, ...string[]]).optional(), // Obrigatório na edição, opcional na criação (default 'Para fazer')
   resolutionDetails: z.string().optional(),
   evidencias: z.string().min(1, 'O campo Evidências é obrigatório.'),
   anexos: z.string().optional(),
-  ambiente: z.enum(environments),
-  origem: z.enum(origins),
+  ambiente: z.enum(environments as [string, ...string[]]),
+  origem: z.enum(origins as [string, ...string[]]),
   // Campos de data como createdAt, inicioAtendimento, terminoAtendimento são gerenciados pelo servidor.
 });
 
@@ -66,6 +66,11 @@ export async function createTicketAction(formData: FormData) {
   const newTicket: Ticket = {
     id: generateTicketId(),
     ...data,
+    // Cast enum fields to their correct types
+    priority: data.priority as Priority,
+    type: data.type as TicketType,
+    ambiente: data.ambiente as Environment,
+    origem: data.origem as Origin,
     solicitanteEmail,
     solicitanteName,
     responsavelEmail: data.responsavelEmail === '' ? null : data.responsavelEmail, // Garante null se vazio
@@ -95,7 +100,7 @@ export async function updateTicketAction(id: string, formData: FormData) {
 
   // Para atualização, o status é obrigatório
   const UpdateTicketSchema = TicketSchema.extend({
-     status: z.enum(ticketStatuses),
+     status: z.enum(ticketStatuses as [string, ...string[]]),
   });
 
   const parsed = UpdateTicketSchema.safeParse({
@@ -133,6 +138,11 @@ export async function updateTicketAction(id: string, formData: FormData) {
 
   const updatedTicketData: Partial<Ticket> = {
     ...data,
+    priority: data.priority as Priority,
+    type: data.type as TicketType,
+    ambiente: data.ambiente as Environment,
+    origem: data.origem as Origin,
+    status: data.status as TicketStatus,
     responsavelEmail: data.responsavelEmail === '' ? null : data.responsavelEmail,
     updatedAt: now,
     inicioAtendimento,
