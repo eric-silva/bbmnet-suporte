@@ -1,6 +1,7 @@
 
 'use client';
 
+import React from 'react'; // Adicionado import do React
 import { TrendingUp, MoreHorizontal } from "lucide-react"
 import { Pie, PieChart as RechartsPieChart, Sector, Cell } from "recharts"
 import {
@@ -23,7 +24,7 @@ import type { ChartConfig } from "@/components/ui/chart";
 export interface ChartDataItem {
   name: string;
   value: number;
-  fill: string; 
+  fill: string;
 }
 
 interface TicketCountChartProps {
@@ -56,7 +57,7 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
       </Card>
     )
   }
-  
+
   return (
     <Card className="flex flex-col h-full">
       <CardHeader className="items-center pb-0">
