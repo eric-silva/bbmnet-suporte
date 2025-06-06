@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/components/auth/AppProviders';
 import { SignInButton } from '@/components/auth/SignInButton';
-import { Ticket } from 'lucide-react';
+import { LifeBuoy, Ticket } from 'lucide-react';
 
 export default function HomePage() {
   const { session } = useSession();
@@ -20,7 +20,7 @@ export default function HomePage() {
   if (session.status === 'loading' || session.status === 'authenticated') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
-        <Ticket className="h-16 w-16 text-primary mb-6 animate-pulse" />
+        <LifeBuoy className="h-16 w-16 text-primary mb-6 animate-pulse" />
         <p className="text-xl text-foreground">Carregando aplicação...</p>
       </div>
     );
@@ -29,7 +29,7 @@ export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
       <div className="max-w-md w-full text-center bg-card p-8 rounded-xl shadow-2xl">
-        <Ticket className="h-16 w-16 text-primary mx-auto mb-6" />
+        <LifeBuoy className="h-16 w-16 text-primary mx-auto mb-6" />
         <h1 className="text-4xl font-bold mb-4 font-headline text-primary">
           BBMNET Suporte
         </h1>
