@@ -1,6 +1,7 @@
 
 'use client';
-import React, { useEffect, useState, useTransition } from 'react';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import React, { useEffect, useState } from 'react';
 import { TicketDataTable } from '@/components/tickets/TicketDataTable';
 import { getTicketColumns } from '@/components/tickets/TicketColumns';
 import { CreateTicketButton } from '@/components/tickets/CreateTicketButton';
@@ -9,7 +10,8 @@ import type { Ticket } from '@/types';
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
-  DialogContent
+  DialogContent,
+  DialogTitle
 } from '@/components/ui/dialog';
 import { TicketForm } from '@/components/tickets/TicketForm';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -88,12 +90,15 @@ export default function DashboardPage() {
       {selectedTicket && (
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
           <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
-             <TicketForm
-                ticket={selectedTicket}
-                onSubmit={handleUpdateTicket}
-                onCancel={() => setIsEditModalOpen(false)}
-                formMode="edit"
-              />
+            <VisuallyHidden>
+              <DialogTitle>Editar Ticket</DialogTitle>
+            </VisuallyHidden>
+            <TicketForm
+              ticket={selectedTicket}
+              onSubmit={handleUpdateTicket}
+              onCancel={() => setIsEditModalOpen(false)}
+              formMode="edit"
+            />
           </DialogContent>
         </Dialog>
       )}

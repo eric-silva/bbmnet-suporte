@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/components/auth/AppProviders';
 import { SignInButton } from '@/components/auth/SignInButton';
-import { LifeBuoy, Ticket } from 'lucide-react';
+import { LifeBuoy } from 'lucide-react';
 
 export default function HomePage() {
   const { session } = useSession();
