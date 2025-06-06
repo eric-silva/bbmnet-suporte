@@ -2,6 +2,7 @@
 'use client';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { TicketDataTable } from '@/components/tickets/TicketDataTable';
 import { getTicketColumns } from '@/components/tickets/TicketColumns';
 import { CreateTicketButton } from '@/components/tickets/CreateTicketButton';
@@ -15,6 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { TicketForm } from '@/components/tickets/TicketForm';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { BarChart2 } from 'lucide-react';
 
 export default function DashboardPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -68,7 +71,10 @@ export default function DashboardPage() {
       <div className="container mx-auto py-10 px-4 md:px-6">
         <div className="flex justify-between items-center mb-8">
           <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-10 w-36" />
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-36" />
+            <Skeleton className="h-10 w-10" />
+          </div>
         </div>
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
@@ -83,7 +89,14 @@ export default function DashboardPage() {
     <div className="container mx-auto py-10 px-4 md:px-6">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold font-headline text-foreground">Tickets de Suporte</h1>
-        <CreateTicketButton />
+        <div className="flex items-center gap-2">
+          <CreateTicketButton />
+          <Link href="/dashboard/charts" passHref>
+            <Button variant="outline" size="icon" aria-label="Ver gráficos">
+              <BarChart2 className="h-5 w-5" />
+            </Button>
+          </Link>
+        </div>
       </div>
       <TicketDataTable columns={columns} data={tickets} />
 
