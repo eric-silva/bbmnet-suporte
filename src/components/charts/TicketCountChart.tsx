@@ -1,9 +1,9 @@
 
 'use client';
 
-import React from 'react'; // Adicionado import do React
-import { TrendingUp, MoreHorizontal } from "lucide-react"
-import { Pie, PieChart as RechartsPieChart, Sector, Cell } from "recharts"
+import React from 'react';
+import { TrendingUp } from "lucide-react"
+import { Pie, PieChart as RechartsPieChart, Cell } from "recharts"
 import {
   Card,
   CardContent,
