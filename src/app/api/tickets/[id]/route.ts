@@ -3,21 +3,23 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { PERMITTED_ASSIGNEES } from '@/lib/constants';
-import { prioridadeValues, tipoValues, ambienteValues, origemValues, situacaoValues, type TicketFormData } from '@/types';
+// Removed import of *Values from '@/types' as they are no longer used here
+import type { TicketFormData } from '@/types';
 
 
 // Zod schema for incoming ticket data (uses string descriptions from TicketFormData)
+// Validation of whether these descriptions exist in DB is handled by Prisma lookups below.
 const UpdateTicketApiSchema = z.object({
   problemDescription: z.string().min(10, 'A descrição do problema deve ter pelo menos 10 caracteres.'),
-  priority: z.string().refine(val => prioridadeValues.includes(val), { message: "Prioridade inválida."}),
-  type: z.string().refine(val => tipoValues.includes(val), { message: "Tipo inválido."}),
+  priority: z.string().min(1, "Prioridade é obrigatória."),
+  type: z.string().min(1, "Tipo é obrigatório."),
   responsavelEmail: z.string().email({ message: "E-mail inválido para responsável." }).nullable().or(z.literal('')),
-  status: z.string().refine(val => situacaoValues.includes(val), { message: "Situação inválida."}),
+  status: z.string().min(1, "Situação é obrigatória."),
   resolutionDetails: z.string().optional().nullable(),
   evidencias: z.string().min(1, 'O campo Evidências é obrigatório.'),
   anexos: z.string().optional().nullable(),
-  ambiente: z.string().refine(val => ambienteValues.includes(val), { message: "Ambiente inválido."}),
-  origem: z.string().refine(val => origemValues.includes(val), { message: "Origem inválida."}),
+  ambiente: z.string().min(1, "Ambiente é obrigatório."),
+  origem: z.string().min(1, "Origem é obrigatória."),
 });
 
 
@@ -54,8 +56,8 @@ export async function GET(
         errorDetails = { name: error.name, message: error.message, stack: error.stack };
       }
     }
-    const clientMessage = (process.env.NODE_ENV === 'production') 
-                          ? `Failed to fetch ticket ${params.id}. Please check server logs for details.` 
+    const clientMessage = (process.env.NODE_ENV === 'production')
+                          ? `Failed to fetch ticket ${params.id}. Please check server logs for details.`
                           : responseMessage;
     return NextResponse.json({ message: clientMessage, ...(errorDetails && {details: errorDetails}) }, { status: 500 });
   }
@@ -68,7 +70,7 @@ export async function PUT(
   try {
     const existingTicket = await prisma.ticket.findUnique({
       where: { id: params.id },
-      include: { situacao: true } 
+      include: { situacao: true }
     });
 
     if (!existingTicket) {
@@ -87,15 +89,14 @@ export async function PUT(
     // Handle responsavel connection
     let responsavelConnectDisconnect = {};
     if (data.responsavelEmail && data.responsavelEmail !== '') {
-      const responsavelDetails = PERMITTED_ASSIGNEES.find(u => u.email === data.responsavelEmail) || 
+      const responsavelDetails = PERMITTED_ASSIGNEES.find(u => u.email === data.responsavelEmail) ||
                                  { email: data.responsavelEmail, name: data.responsavelEmail.split('@')[0] };
       const responsavel = await prisma.usuario.upsert({
         where: { email: data.responsavelEmail },
         update: { nome: responsavelDetails.name },
-        create: { 
-          email: data.responsavelEmail, 
+        create: {
+          email: data.responsavelEmail,
           nome: responsavelDetails.name,
-          // hashedPassword and fotoUrl are not set here
         },
       });
       responsavelConnectDisconnect = { responsavel: { connect: { id: responsavel.id } } };
@@ -108,39 +109,40 @@ export async function PUT(
     const tipoRecord = await prisma.tipo.findUnique({ where: { descricao: data.type } });
     const ambienteRecord = await prisma.ambiente.findUnique({ where: { descricao: data.ambiente } });
     const origemRecord = await prisma.origem.findUnique({ where: { descricao: data.origem } });
-    const situacaoRecord = await prisma.situacao.findUnique({ where: { descricao: data.status as string } }); // data.status is guaranteed by Zod
+    const situacaoRecord = await prisma.situacao.findUnique({ where: { descricao: data.status as string } });
 
-    if (!prioridadeRecord || !tipoRecord || !ambienteRecord || !origemRecord || !situacaoRecord) {
-       const missing = [
+    const missingLookups = [
         !prioridadeRecord ? `Prioridade '${data.priority}'` : null,
         !tipoRecord ? `Tipo '${data.type}'` : null,
         !ambienteRecord ? `Ambiente '${data.ambiente}'` : null,
         !origemRecord ? `Origem '${data.origem}'` : null,
         !situacaoRecord ? `Situação '${data.status}'` : null,
-      ].filter(Boolean).join(', ');
-      return NextResponse.json({ message: `Could not find required lookup values: ${missing}.` }, { status: 400 });
+      ].filter(Boolean);
+
+    if (missingLookups.length > 0) {
+      return NextResponse.json({ message: `Could not find required lookup values: ${missingLookups.join(', ')}. Please ensure these exist in the database.` }, { status: 400 });
     }
 
     // Handle inicioAtendimento and terminoAtendimento logic
     let inicioAtendimento = existingTicket.inicioAtendimento;
-    if (existingTicket.situacao.descricao === 'Para fazer' && situacaoRecord.descricao === 'Em Andamento' && !existingTicket.inicioAtendimento) {
+    if (existingTicket.situacao.descricao === 'Para fazer' && situacaoRecord!.descricao === 'Em Andamento' && !existingTicket.inicioAtendimento) {
       inicioAtendimento = now;
     }
 
     let terminoAtendimento = existingTicket.terminoAtendimento;
-    if (situacaoRecord.descricao === 'Finalizado' && existingTicket.situacao.descricao !== 'Finalizado') {
+    if (situacaoRecord!.descricao === 'Finalizado' && existingTicket.situacao.descricao !== 'Finalizado') {
       terminoAtendimento = now;
-    } else if (existingTicket.situacao.descricao === 'Finalizado' && situacaoRecord.descricao !== 'Finalizado') {
-      terminoAtendimento = null; 
+    } else if (existingTicket.situacao.descricao === 'Finalizado' && situacaoRecord!.descricao !== 'Finalizado') {
+      terminoAtendimento = null;
     }
-    
+
     const updatedTicketData = {
       problemDescription: data.problemDescription,
-      prioridade: { connect: { id: prioridadeRecord.id } },
-      tipo: { connect: { id: tipoRecord.id } },
-      ambiente: { connect: { id: ambienteRecord.id } },
-      origem: { connect: { id: origemRecord.id } },
-      situacao: { connect: { id: situacaoRecord.id } },
+      prioridade: { connect: { id: prioridadeRecord!.id } },
+      tipo: { connect: { id: tipoRecord!.id } },
+      ambiente: { connect: { id: ambienteRecord!.id } },
+      origem: { connect: { id: origemRecord!.id } },
+      situacao: { connect: { id: situacaoRecord!.id } },
       ...responsavelConnectDisconnect,
       evidencias: data.evidencias,
       anexos: data.anexos,
@@ -153,8 +155,8 @@ export async function PUT(
     const updatedTicket = await prisma.ticket.update({
       where: { id: params.id },
       data: updatedTicketData,
-      include: { 
-        prioridade: true, tipo: true, ambiente: true, origem: true, 
+      include: {
+        prioridade: true, tipo: true, ambiente: true, origem: true,
         solicitante: true, responsavel: true, situacao: true
       }
     });
@@ -171,8 +173,8 @@ export async function PUT(
         errorDetails = { name: error.name, message: error.message, stack: error.stack };
       }
     }
-    const clientMessage = (process.env.NODE_ENV === 'production') 
-                          ? `Failed to update ticket ${params.id}. Please check server logs for details.` 
+    const clientMessage = (process.env.NODE_ENV === 'production')
+                          ? `Failed to update ticket ${params.id}. Please check server logs for details.`
                           : responseMessage;
     return NextResponse.json({ message: clientMessage, ...(errorDetails && {details: errorDetails}) }, { status: 500 });
   }
