@@ -1,42 +1,28 @@
 
-// Base entity type
+// Base entity interface
 export interface BaseEntity {
   id: string;
   descricao: string;
 }
 
-// Specific entity types based on BaseEntity
-export type Prioridade = BaseEntity;
-export type Tipo = BaseEntity;
-export type Situacao = BaseEntity;
-export type Ambiente = BaseEntity;
-export type Origem = BaseEntity;
+// Specific entity interfaces extending BaseEntity
+export interface Prioridade extends BaseEntity {}
+export interface Tipo extends BaseEntity {}
+export interface Situacao extends BaseEntity {}
+export interface Ambiente extends BaseEntity {}
+export interface Origem extends BaseEntity {}
 
-// Values for initial seeding/dropdowns - these should match what's in your DB after seeding
-// and these string arrays are used by Zod schemas for validation.
-export const prioridadeValues: string[] = ["Baixo", "Normal", "Alto", "Crítico"];
-export const tipoValues: string[] = ["Intervenção", "Bug", "Melhoria", "Backlog", "Apoio Técnico"];
-export const situacaoValues: string[] = [
-  "Para fazer", 
-  "Em Análise", 
-  "Em Andamento", 
-  "Pendente de Teste", 
-  "Em Teste", 
-  "Finalizado", 
-  "Reaberto", 
-  "Aguardando BBM", 
-  "Abortado"
-];
-export const ambienteValues: string[] = ["Homologação", "Produção"];
-export const origemValues: string[] = ["Sala de Negociação", "Licitações", "Cadastramento", "Integração", "Cadastro ADMIN"];
-
+// These hardcoded arrays are no longer the source of truth for validation.
+// The backend will validate descriptions against the database.
+// They can be removed or kept for client-side suggestions if needed,
+// but for now, we'll remove them to emphasize dynamic fetching.
 
 export interface Usuario {
   id: string;
   nome: string;
-  email: string;
+  email: string; // Deve ser único
+  hashedPassword?: string | null; // Armazenar hash da senha
   fotoUrl?: string | null;
-  // hashedPassword is not typically sent to the client
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
@@ -46,22 +32,22 @@ export interface Ticket {
   problemDescription: string;
   
   prioridadeId: string;
-  prioridade: Prioridade;
+  prioridade: Prioridade; // Relation to Prioridade model
 
   tipoId: string;
-  tipo: Tipo;
+  tipo: Tipo; // Relation to Tipo model
 
   ambienteId: string;
-  ambiente: Ambiente;
+  ambiente: Ambiente; // Relation to Ambiente model
 
   origemId: string;
-  origem: Origem;
+  origem: Origem; // Relation to Origem model
 
   solicitanteId: string;
-  solicitante: Usuario;
+  solicitante: Usuario; // Relation to Usuario model for solicitante
 
   responsavelId?: string | null;
-  responsavel?: Usuario | null;
+  responsavel?: Usuario | null; // Relation to Usuario model for responsavel
 
   evidencias: string;
   anexos?: string | null;
@@ -70,7 +56,7 @@ export interface Ticket {
   resolutionDetails?: string | null;
 
   situacaoId: string;
-  situacao: Situacao;
+  situacao: Situacao; // Relation to Situacao model
 
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
@@ -83,6 +69,8 @@ export interface Assignee {
 }
 
 // For TicketForm Zod schema and API communication
+// This interface represents the data structure expected by the form and its Zod schema.
+// The Zod schema itself is defined in TicketForm.tsx.
 export interface TicketFormData {
   problemDescription: string;
   priority: string; // This will be the 'descricao' of Prioridade

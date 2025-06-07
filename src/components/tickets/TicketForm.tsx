@@ -17,25 +17,26 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import type { Ticket, Assignee, BaseEntity } from '@/types';
-import { prioridadeValues, tipoValues, ambienteValues, origemValues, situacaoValues } from '@/types';
+import type { Ticket, Assignee, BaseEntity, Prioridade, Tipo, Situacao, Ambiente, Origem } from '@/types';
+// Removed prioridadeValues, tipoValues etc. from '@/types'
 import { AiAssigneeSuggestion } from './AiAssigneeSuggestion';
 import { useSession } from '@/components/auth/AppProviders';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Updated Zod schema - values are string descriptions
+// Updated Zod schema - values are string descriptions.
+// Validation if these descriptions exist in DB is handled by the backend.
 const ticketFormSchema = z.object({
   problemDescription: z.string().min(10, 'A descrição do problema deve ter pelo menos 10 caracteres.'),
-  priority: z.string().refine(val => prioridadeValues.includes(val), { message: "Selecione uma prioridade válida."}),
-  type: z.string().refine(val => tipoValues.includes(val), { message: "Selecione um tipo válido."}),
+  priority: z.string().min(1, "Selecione uma prioridade."),
+  type: z.string().min(1, "Selecione um tipo."),
   responsavelEmail: z.string().email({ message: "E-mail inválido." }).nullable().or(z.literal('')),
-  status: z.string().refine(val => situacaoValues.includes(val), { message: "Selecione uma situação válida."}).optional(),
+  status: z.string().min(1, "Selecione uma situação.").optional(), // Optional for create, required for edit by form logic
   resolutionDetails: z.string().optional().nullable(),
   evidencias: z.string().min(1, 'O campo Evidências é obrigatório. Por favor, descreva ou cole links para as evidências.'),
   anexos: z.string().optional().nullable(),
-  ambiente: z.string().refine(val => ambienteValues.includes(val), { message: "Selecione um ambiente válido."}),
-  origem: z.string().refine(val => origemValues.includes(val), { message: "Selecione uma origem válida."}),
+  ambiente: z.string().min(1, "Selecione um ambiente."),
+  origem: z.string().min(1, "Selecione uma origem."),
 });
 
 export type TicketFormData = z.infer<typeof ticketFormSchema>;
@@ -53,25 +54,25 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
   const [isPending, startTransition] = useTransition();
   
   const [assigneeOptions, setAssigneeOptions] = useState<Assignee[]>([]);
-  const [priorityOptions, setPriorityOptions] = useState<BaseEntity[]>([]);
-  const [typeOptions, setTypeOptions] = useState<BaseEntity[]>([]);
-  const [statusOptions, setStatusOptions] = useState<BaseEntity[]>([]);
-  const [environmentOptions, setEnvironmentOptions] = useState<BaseEntity[]>([]);
-  const [originOptions, setOriginOptions] = useState<BaseEntity[]>([]);
+  const [priorityOptions, setPriorityOptions] = useState<Prioridade[]>([]);
+  const [typeOptions, setTypeOptions] = useState<Tipo[]>([]);
+  const [statusOptions, setStatusOptions] = useState<Situacao[]>([]);
+  const [environmentOptions, setEnvironmentOptions] = useState<Ambiente[]>([]);
+  const [originOptions, setOriginOptions] = useState<Origem[]>([]);
   
   const { register, handleSubmit, control, formState: { errors }, watch, setValue, reset } = useForm<TicketFormData>({
     resolver: zodResolver(ticketFormSchema),
     defaultValues: {
-      problemDescription: ticket?.problemDescription || '',
-      priority: ticket?.prioridade.descricao || prioridadeValues[1], // Default to "Normal"
-      type: ticket?.tipo.descricao || tipoValues[1], // Default to "Bug"
-      responsavelEmail: ticket?.responsavel?.email || '',
-      status: ticket?.situacao.descricao || (formMode === 'create' ? situacaoValues[0] : undefined), // Default to "Para fazer"
-      resolutionDetails: ticket?.resolutionDetails || '',
-      evidencias: ticket?.evidencias || '',
-      anexos: ticket?.anexos || '',
-      ambiente: ticket?.ambiente.descricao || ambienteValues[0],
-      origem: ticket?.origem.descricao || origemValues[0],
+      problemDescription: '',
+      priority: '', 
+      type: '', 
+      responsavelEmail: '',
+      status: '', 
+      resolutionDetails: '',
+      evidencias: '',
+      anexos: '',
+      ambiente: '', 
+      origem: '', 
     },
   });
 
@@ -99,30 +100,70 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
       if (!environmentsRes.ok) throw new Error('Failed to fetch environments');
       if (!originsRes.ok) throw new Error('Failed to fetch origins');
 
-      setAssigneeOptions(await assigneesRes.json());
-      setPriorityOptions(await prioritiesRes.json());
-      setTypeOptions(await typesRes.json());
-      setStatusOptions(await statusesRes.json());
-      const fetchedEnvs = await environmentsRes.json();
-      setEnvironmentOptions(fetchedEnvs);
-      const fetchedOrigins = await originsRes.json();
-      setOriginOptions(fetchedOrigins);
-      
-      // Set default values after fetching if in create mode or if current value is not in fetched list
-      if (formMode === 'create') {
-        if (fetchedEnvs.length > 0 && !watch('ambiente')) setValue('ambiente', fetchedEnvs[0].descricao);
-        if (fetchedOrigins.length > 0 && !watch('origem')) setValue('origem', fetchedOrigins[0].descricao);
-        if (priorityOptions.length > 0 && !watch('priority')) setValue('priority', priorityOptions.find(p=>p.descricao === "Normal")?.descricao || priorityOptions[0]?.descricao || '');
-        if (typeOptions.length > 0 && !watch('type')) setValue('type', typeOptions.find(t=>t.descricao === "Bug")?.descricao || typeOptions[0]?.descricao || '');
-        if (statusOptions.length > 0 && !watch('status')) setValue('status', statusOptions.find(s=>s.descricao === "Para fazer")?.descricao || statusOptions[0]?.descricao || '');
+      const assigneesData = await assigneesRes.json();
+      const prioritiesData = await prioritiesRes.json();
+      const typesData = await typesRes.json();
+      const statusesData = await statusesRes.json();
+      const environmentsData = await environmentsRes.json();
+      const originsData = await originsRes.json();
 
+      if (!Array.isArray(assigneesData)) throw new Error('Assignees data is not an array');
+      if (!Array.isArray(prioritiesData)) throw new Error('Priorities data is not an array');
+      if (!Array.isArray(typesData)) throw new Error('Types data is not an array');
+      if (!Array.isArray(statusesData)) throw new Error('Statuses data is not an array');
+      if (!Array.isArray(environmentsData)) throw new Error('Environments data is not an array');
+      if (!Array.isArray(originsData)) throw new Error('Origins data is not an array');
+
+      setAssigneeOptions(assigneesData);
+      setPriorityOptions(prioritiesData);
+      setTypeOptions(typesData);
+      setStatusOptions(statusesData);
+      setEnvironmentOptions(environmentsData);
+      setOriginOptions(originsData);
+      
+      // Set default values after fetching if in create mode
+      if (formMode === 'create') {
+        // Set default for radio group if options available
+        if (environmentsData.length > 0 && !watch('ambiente')) {
+          setValue('ambiente', environmentsData.find(e => e.descricao === "Produção")?.descricao || environmentsData[0].descricao);
+        }
+         // Set default "Para fazer" for status if available
+        if (statusesData.length > 0 && !watch('status')) {
+            setValue('status', statusesData.find(s => s.descricao === "Para fazer")?.descricao || statusesData[0].descricao);
+        }
+        // Set default "Normal" for priority if available
+        if (prioritiesData.length > 0 && !watch('priority')) {
+            setValue('priority', prioritiesData.find(p => p.descricao === "Normal")?.descricao || prioritiesData[0].descricao);
+        }
+        // Set default "Bug" for type if available
+        if (typesData.length > 0 && !watch('type')) {
+            setValue('type', typesData.find(t => t.descricao === "Bug")?.descricao || typesData[0].descricao);
+        }
+         // Set default "Sala de Negociação" for origem if available
+        if (originsData.length > 0 && !watch('origem')) {
+          setValue('origem', originsData.find(o => o.descricao === "Sala de Negociação")?.descricao || originsData[0].descricao);
+        }
+
+      } else if (ticket) { // For edit mode, set values from the ticket
+         reset({
+          problemDescription: ticket.problemDescription,
+          priority: ticket.prioridade.descricao,
+          type: ticket.tipo.descricao,
+          responsavelEmail: ticket.responsavel?.email || '',
+          status: ticket.situacao.descricao,
+          resolutionDetails: ticket.resolutionDetails || '',
+          evidencias: ticket.evidencias,
+          anexos: ticket.anexos || '',
+          ambiente: ticket.ambiente.descricao,
+          origem: ticket.origem.descricao,
+        });
       }
 
     } catch (error) {
       console.error("Failed to fetch form metadata:", error);
-      toast({ title: "Erro ao carregar dados", description: "Não foi possível carregar opções para o formulário.", variant: "destructive" });
+      toast({ title: "Erro ao carregar dados", description: `Não foi possível carregar opções para o formulário. ${(error as Error).message}`, variant: "destructive" });
     }
-  }, [getAuthHeaders, toast, formMode, setValue, watch, priorityOptions, typeOptions, statusOptions]);
+  }, [getAuthHeaders, toast, formMode, setValue, watch, ticket, reset]);
 
 
   useEffect(() => {
@@ -130,40 +171,38 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
   }, [fetchAllMetaData]);
   
   useEffect(() => {
-    if (ticket) {
+    // This effect ensures that if a ticket is provided (edit mode),
+    // the form is reset with the ticket's data once metadata (like statusOptions) is available.
+    if (formMode === 'edit' && ticket && statusOptions.length > 0) {
       reset({
         problemDescription: ticket.problemDescription,
         priority: ticket.prioridade.descricao,
         type: ticket.tipo.descricao,
         responsavelEmail: ticket.responsavel?.email || '',
-        status: ticket.situacao.descricao,
+        status: ticket.situacao.descricao, // This is now reliably set
         resolutionDetails: ticket.resolutionDetails || '',
         evidencias: ticket.evidencias,
         anexos: ticket.anexos || '',
         ambiente: ticket.ambiente.descricao,
         origem: ticket.origem.descricao,
       });
-    } else if (formMode === 'create') {
-        reset(currentValues => ({
-            ...currentValues,
-            problemDescription: '',
-            priority: priorityOptions.find(p => p.descricao === "Normal")?.descricao || priorityOptions[0]?.descricao || '',
-            type: typeOptions.find(t => t.descricao === "Bug")?.descricao || typeOptions[0]?.descricao || '',
-            responsavelEmail: '',
-            status: statusOptions.find(s => s.descricao === "Para fazer")?.descricao || statusOptions[0]?.descricao || '',
-            resolutionDetails: '',
-            evidencias: '',
-            anexos: '',
-            ambiente: environmentOptions[0]?.descricao || '',
-            origem: originOptions[0]?.descricao || '',
-        }));
+    } else if (formMode === 'create' && statusOptions.length > 0 && !watch('status')) {
+        // Ensure default status is set for create mode once options are loaded
+        setValue('status', statusOptions.find(s => s.descricao === "Para fazer")?.descricao || statusOptions[0]?.descricao || '');
     }
-  }, [ticket, reset, formMode, priorityOptions, typeOptions, statusOptions, environmentOptions, originOptions]);
+  }, [ticket, reset, formMode, statusOptions, setValue, watch]);
 
 
   const handleFormSubmit = (data: TicketFormData) => {
     startTransition(async () => {
-      const result = await onSubmit(data, ticket?.id); // Pass TicketFormData directly
+      // Ensure status is included if in create mode and it's not set explicitly by user yet
+      const dataToSend = { ...data };
+      if (formMode === 'create' && !dataToSend.status && statusOptions.length > 0) {
+        dataToSend.status = statusOptions.find(s => s.descricao === "Para fazer")?.descricao || statusOptions[0]?.descricao || '';
+      }
+
+
+      const result = await onSubmit(dataToSend, ticket?.id);
       if (result.success) {
         toast({
           title: formMode === 'create' ? "Ticket Criado" : "Ticket Atualizado",
@@ -188,6 +227,9 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
   const handleAiSuggestionAccept = (suggestedEmail: string) => {
     setValue('responsavelEmail', suggestedEmail, { shouldValidate: true });
   };
+  
+  const isLoadingOptions = priorityOptions.length === 0 || typeOptions.length === 0 || statusOptions.length === 0 || environmentOptions.length === 0 || originOptions.length === 0;
+
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)}>
@@ -230,7 +272,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value} disabled={isPending || priorityOptions.length === 0}>
                     <SelectTrigger id="priority" className="mt-1">
-                      <SelectValue placeholder="Selecione a prioridade" />
+                      <SelectValue placeholder={priorityOptions.length === 0 ? "Carregando..." : "Selecione a prioridade"} />
                     </SelectTrigger>
                     <SelectContent>
                       {priorityOptions.map(p => <SelectItem key={p.id} value={p.descricao}>{p.descricao}</SelectItem>)}
@@ -249,7 +291,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value} disabled={isPending || typeOptions.length === 0}>
                     <SelectTrigger id="type" className="mt-1">
-                      <SelectValue placeholder="Selecione o tipo" />
+                      <SelectValue placeholder={typeOptions.length === 0 ? "Carregando..." : "Selecione o tipo"} />
                     </SelectTrigger>
                     <SelectContent>
                       {typeOptions.map(t => <SelectItem key={t.id} value={t.descricao}>{t.descricao}</SelectItem>)}
@@ -274,6 +316,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
                     className="flex space-x-4 mt-2"
                     disabled={isPending || environmentOptions.length === 0}
                   >
+                    {environmentOptions.length === 0 && <Label className="text-sm text-muted-foreground">Carregando...</Label>}
                     {environmentOptions.map(env => (
                       <div key={env.id} className="flex items-center space-x-2">
                         <RadioGroupItem value={env.descricao} id={`ambiente-${env.id}`} />
@@ -298,7 +341,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
                     disabled={isPending || originOptions.length === 0}
                   >
                     <SelectTrigger id="origem" className="mt-1">
-                      <SelectValue placeholder="Selecione a origem" />
+                      <SelectValue placeholder={originOptions.length === 0 ? "Carregando..." : "Selecione a origem"} />
                     </SelectTrigger>
                     <SelectContent>
                       {originOptions.map(o => <SelectItem key={o.id} value={o.descricao}>{o.descricao}</SelectItem>)}
@@ -346,7 +389,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
                   disabled={isPending || assigneeOptions.length === 0}
                 >
                   <SelectTrigger id="responsavelEmail" className="mt-1">
-                    <SelectValue placeholder="Selecione o responsável" />
+                    <SelectValue placeholder={assigneeOptions.length === 0 ? "Carregando..." : "Selecione o responsável"} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unassigned">Não atribuído</SelectItem>
@@ -377,7 +420,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value} disabled={isPending || statusOptions.length === 0}>
                       <SelectTrigger id="status" className="mt-1">
-                        <SelectValue placeholder="Selecione a situação" />
+                        <SelectValue placeholder={statusOptions.length === 0 ? "Carregando..." : "Selecione a situação"} />
                       </SelectTrigger>
                       <SelectContent>
                         {statusOptions.map(s => <SelectItem key={s.id} value={s.descricao}>{s.descricao}</SelectItem>)}
@@ -405,12 +448,13 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
           <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isPending || environmentOptions.length === 0 || originOptions.length === 0 || priorityOptions.length === 0 || typeOptions.length === 0 || statusOptions.length === 0 } className="font-headline">
+          <Button type="submit" disabled={isPending || isLoadingOptions} className="font-headline">
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {formMode === 'create' ? 'Criar Ticket' : 'Salvar Alterações'}
+            {isLoadingOptions && !isPending && formMode === 'create' ? 'Carregando opções...' : (formMode === 'create' ? 'Criar Ticket' : 'Salvar Alterações')}
           </Button>
         </CardFooter>
       </Card>
     </form>
   );
 }
+
