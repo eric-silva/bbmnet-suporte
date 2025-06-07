@@ -100,50 +100,45 @@ body {
 
 @media print {
   body {
-    -webkit-print-color-adjust: exact !important; /* Chrome, Safari, Edge */
-    print-color-adjust: exact !important; /* Firefox */
-    background-color: white !important; /* Ensure background is white for print */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: white !important; 
+    color: black !important;
+    margin: 0; /* Reset margin for main page body when printing directly */
+    padding: 0; /* Reset padding */
   }
   .app-header-print-hide,
   .app-footer-print-hide,
   .charts-page-controls-print-hide,
-  .no-print { /* General class to hide elements */
+  .no-print { 
     display: none !important;
     visibility: hidden !important;
   }
 
-  /* Ensure the chart area itself takes up the page */
+  /* These styles apply if printing the main page directly, not the preview window */
+  /* For the preview window, styles are injected by SaveToPdfButton.tsx */
   #chart-to-print-area {
-    position: absolute;
-    left: 0;
-    top: 0;
+    position: static; /* Changed from absolute for main page direct print */
     width: 100%;
     height: auto;
     visibility: visible !important;
-    padding: 20px; /* Add some padding for the print layout */
+    padding: 0; /* Reset padding for print */
+    margin: 0;
     background-color: white !important;
+    box-sizing: border-box;
   }
   
-  /* Make sure elements inside the chart area are visible */
   #chart-to-print-area * {
     visibility: visible !important;
   }
 
-  /* Resetting some global styles for print if needed */
-  body, html {
-    background: white !important;
-    color: black !important;
-  }
-
-  /* Specifically target the recharts container for print size adjustments */
   #chart-to-print-area .recharts-responsive-container {
     width: 100% !important;
-    height: 90vh !important; /* Adjust height as needed for print */
+    /* height: 90vh !important;  Let flexbox in preview window control this */
+    height: 100% !important; /* Changed to fill parent in print */
   }
   #chart-to-print-area svg.recharts-surface {
       width: 100% !important;
       height: 100% !important;
   }
 }
-
-    

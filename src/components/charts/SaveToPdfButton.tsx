@@ -11,7 +11,7 @@ interface SaveToPdfButtonProps {
 
 export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
   const { toast } = useToast();
-  const { session } = useSession(); // Obter a sessão do usuário
+  const { session } = useSession();
   
   const handleSave = () => {
     if (!isChartReady) {
@@ -23,7 +23,7 @@ export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
       return;
     }
 
-    const printPreview = window.open('', 'PRINT', 'height=650,width=900,top=100,left=150');
+    const printPreview = window.open('', 'PRINT', 'height=800,width=1100,top=50,left=50');
     
     if (printPreview) {
       const chartArea = document.getElementById('chart-to-print-area');
@@ -41,34 +41,71 @@ export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
         .filter(css => css)
         .join('\n');
 
-      // Criar conteúdo do rodapé
       const now = new Date();
       const formattedDateTime = `${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR')}`;
       const userName = session.user?.name || 'Usuário Desconhecido';
-      const systemName = 'BBMNET Suporte'; // Nome do sistema
+      const systemName = 'BBMNET Suporte';
       const footerText = `Gerado em ${formattedDateTime} por ${userName} no sistema ${systemName}.`;
 
       printPreview.document.write('<html><head><title>Imprimir Gráfico</title>');
       printPreview.document.write('<style>');
-      printPreview.document.write(existingStyles);
-      // Estilos específicos para a impressão, incluindo o rodapé
+      printPreview.document.write(existingStyles); // Apply existing styles first
+      // Specific print styles for the preview window
       printPreview.document.write(`
         @media print {
-          body { 
-            margin: 20px; 
-            padding-bottom: 60px; /* Espaço para o rodapé */
-            position: relative; 
-            min-height: 98vh; /* Garante que o corpo seja alto o suficiente */
+          @page {
+            size: A4 portrait; /* Or 'letter portrait', or 'auto' */
+            margin: 15mm; /* Adjust margins as needed */
           }
-          #chart-to-print-area { 
-            width: 100%; 
-            height: auto; /* Altura automática para o conteúdo */
+          html, body {
+            height: 100%; 
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            background-color: white !important;
+            color: black !important;
+          }
+          #chart-to-print-area-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%; /* Fill the page within margins */
+            box-sizing: border-box;
+          }
+          #chart-to-print-area {
+            flex-grow: 1; 
+            width: 100%;
+            overflow: hidden; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+          }
+          #chart-to-print-area .recharts-responsive-container,
+          #chart-to-print-area svg.recharts-surface {
+            max-width: 100%;
+            max-height: 100%; /* Ensure chart fits in its flex container */
+            width: 100% !important; /* Override inline styles if any */
+            height: 100% !important; /* Override inline styles if any */
+          }
+          .print-footer-info {
+            width: 100%;
+            text-align: center;
+            font-size: 9pt; /* Use points for print font size */
+            font-family: Arial, sans-serif;
+            color: #333;
+            border-top: 0.5pt solid #999; /* Use points for border width */
+            padding-top: 5mm;
+            margin-top: 5mm; 
+            flex-shrink: 0;
+            box-sizing: border-box;
             visibility: visible !important;
           }
-          #chart-to-print-area * {
-             visibility: visible !important; /* Garante que conteúdo interno seja visível */
-          }
-          /* Ocultar elementos não desejados na impressão */
+          /* Ensure these are hidden in the print preview */
           .charts-page-controls-print-hide, 
           .app-header-print-hide, 
           .app-footer-print-hide,
@@ -76,43 +113,25 @@ export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
             display: none !important; 
             visibility: hidden !important;
           }
-          /* Estilo do rodapé de impressão */
-          .print-footer-info { 
-            position: fixed; /* Posição fixa na parte inferior da viewport de impressão */
-            bottom: 10px;
-            left: 20px;
-            right: 20px;
-            text-align: center;
-            font-size: 10px;
-            font-family: Arial, sans-serif; /* Fonte genérica para impressão */
-            color: #555;
-            border-top: 1px solid #bbb;
-            padding-top: 8px;
-            margin-top: 10px; /* Espaço acima do rodapé */
-            visibility: visible !important; /* Garante que o rodapé seja visível */
-            z-index: 1000; /* Garante que o rodapé esteja acima de outros elementos */
-          }
         }
       `);
       printPreview.document.write('</style></head><body>');
       
+      printPreview.document.write('<div id="chart-to-print-area-wrapper">');
       if (chartArea) {
-        // Escreve o conteúdo da área do gráfico em uma div com o mesmo ID para manter estilos
         printPreview.document.write('<div id="chart-to-print-area">');
         printPreview.document.write(chartArea.innerHTML);
         printPreview.document.write('</div>');
       } else {
         printPreview.document.write('<p>Erro: Área do gráfico não encontrada.</p>');
       }
-
-      // Escreve a div do rodapé
       printPreview.document.write(`<div class="print-footer-info">${footerText}</div>`);
+      printPreview.document.write('</div>'); // Close chart-to-print-area-wrapper
       
       printPreview.document.write('</body></html>');
       printPreview.document.close(); 
       printPreview.focus(); 
       
-      // Adiciona um pequeno atraso para garantir que o conteúdo e os estilos sejam renderizados
       setTimeout(() => {
         try {
           printPreview.print();
@@ -124,7 +143,7 @@ export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
             variant: "destructive",
           });
         }
-      }, 750); // Atraso pode ser ajustado se necessário
+      }, 750);
 
     } else {
        toast({
@@ -140,7 +159,7 @@ export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
       onClick={handleSave} 
       variant="outline" 
       className="font-headline"
-      disabled={!isChartReady} // Botão desabilitado se o gráfico não estiver pronto
+      disabled={!isChartReady}
     >
       <FileDown className="mr-2 h-4 w-4" /> 
       Salvar em PDF
