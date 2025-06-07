@@ -36,10 +36,11 @@ interface TicketCountChartProps {
 
 export function TicketCountChart({ data, title, description, chartConfig }: TicketCountChartProps) {
   const totalValue = React.useMemo(() => {
+    if (!data) return 0;
     return data.reduce((acc, curr) => acc + curr.value, 0);
   }, [data]);
 
-  if (!data || data.length === 0) {
+  if (!data || data.length === 0 || totalValue === 0) {
     return (
        <Card className="flex flex-col h-full shadow-md">
         <CardHeader className="items-center pb-0">
@@ -51,16 +52,16 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
         </CardContent>
         <CardFooter className="flex-col gap-2 text-sm">
            <div className="leading-none text-muted-foreground">
-            Nenhum ticket encontrado.
+            Nenhum ticket encontrado ou valores zerados.
           </div>
         </CardFooter>
       </Card>
     )
   }
 
-  const pieOuterRadius = 100; // Reduced from 120
-  const pieInnerRadius = 50;  // Reduced from 60
-  const labelPositionOffset = 20; // Reduced from 30
+  const pieOuterRadius = 100;
+  const pieInnerRadius = 50;
+  const labelPositionOffset = 20;
 
   return (
     <Card className="flex flex-col h-full shadow-md">
@@ -82,16 +83,34 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
               data={data}
               dataKey="value"
               nameKey="name"
-              innerRadius={pieInnerRadius} 
+              innerRadius={pieInnerRadius}
               outerRadius={pieOuterRadius}
               strokeWidth={2}
               labelLine={false}
-              label={({ name, percent, x, y, textAnchor, payload }) => {
+              label={({ name, percent, cx, cy, midAngle, outerRadius: sliceOuterRadius, value: sliceValue }) => {
+                // Do not render label for slices with zero value to avoid clutter and potential issues.
+                if (sliceValue === 0) return null;
+
+                // Ensure essential geometric properties are valid numbers.
+                if (typeof cx !== 'number' || isNaN(cx) ||
+                    typeof cy !== 'number' || isNaN(cy) ||
+                    typeof midAngle !== 'number' || isNaN(midAngle)) {
+                  return null; // Avoid rendering if coordinates or angle are not valid.
+                }
+
                 const RADIAN = Math.PI / 180;
-                // x and y are the center of the pie (cx, cy)
-                const positioningRadius = pieOuterRadius + labelPositionOffset;
-                const lx = x + (positioningRadius * Math.cos(-payload.midAngle * RADIAN));
-                const ly = y + (positioningRadius * Math.sin(-payload.midAngle * RADIAN));
+                // Use sliceOuterRadius from props if available (more specific), otherwise the default pieOuterRadius.
+                const currentOuterRadius = typeof sliceOuterRadius === 'number' ? sliceOuterRadius : pieOuterRadius;
+                const positioningRadius = currentOuterRadius + labelPositionOffset;
+
+                const lx = cx + (positioningRadius * Math.cos(-midAngle * RADIAN));
+                const ly = cy + (positioningRadius * Math.sin(-midAngle * RADIAN));
+
+                // Determine textAnchor based on label position relative to pie center for better alignment.
+                let textAnchor = 'middle';
+                if (lx < cx - 1) textAnchor = 'end'; // Using a small threshold for floating point comparisons
+                else if (lx > cx + 1) textAnchor = 'start';
+
                 return (
                   <text
                     x={lx}
@@ -126,4 +145,3 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
     </Card>
   );
 }
-
