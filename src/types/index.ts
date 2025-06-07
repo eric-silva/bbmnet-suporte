@@ -13,6 +13,7 @@ export type Ambiente = BaseEntity;
 export type Origem = BaseEntity;
 
 // Values for initial seeding/dropdowns - these should match what's in your DB after seeding
+// and these string arrays are used by Zod schemas for validation.
 export const prioridadeValues: string[] = ["Baixo", "Normal", "Alto", "Crítico"];
 export const tipoValues: string[] = ["Intervenção", "Bug", "Melhoria", "Backlog", "Apoio Técnico"];
 export const situacaoValues: string[] = [
@@ -34,6 +35,10 @@ export interface Usuario {
   id: string;
   nome: string;
   email: string;
+  fotoUrl?: string | null;
+  // hashedPassword is not typically sent to the client
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
 }
 
 export interface Ticket {
@@ -71,8 +76,22 @@ export interface Ticket {
   updatedAt: string; // ISO date string
 }
 
-// For forms and general use where only name/email is needed for an assignee
+// For forms and general use where only name/email is needed for an assignee for dropdowns
 export interface Assignee {
   email: string;
   name: string;
+}
+
+// For TicketForm Zod schema and API communication
+export interface TicketFormData {
+  problemDescription: string;
+  priority: string; // This will be the 'descricao' of Prioridade
+  type: string;     // This will be the 'descricao' of Tipo
+  responsavelEmail?: string | null;
+  status?: string;   // This will be the 'descricao' of Situacao (optional for create)
+  resolutionDetails?: string | null;
+  evidencias: string;
+  anexos?: string | null;
+  ambiente: string; // This will be the 'descricao' of Ambiente
+  origem: string;   // This will be the 'descricao' of Origem
 }

@@ -1,84 +1,78 @@
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
 generator client {
   provider        = "prisma-client-js"
   binaryTargets   = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model Prioridade {
   id        String   @id @default(cuid())
-  descricao String   @unique
+  descricao String   @unique @db.Text
   tickets   Ticket[]
 }
 
 model Tipo {
   id        String   @id @default(cuid())
-  descricao String   @unique
+  descricao String   @unique @db.Text
   tickets   Ticket[]
 }
 
 model Situacao {
   id        String   @id @default(cuid())
-  descricao String   @unique
+  descricao String   @unique @db.Text
   tickets   Ticket[]
 }
 
 model Ambiente {
   id        String   @id @default(cuid())
-  descricao String   @unique
+  descricao String   @unique @db.Text
   tickets   Ticket[]
 }
 
 model Origem {
   id        String   @id @default(cuid())
-  descricao String   @unique
+  descricao String   @unique @db.Text
   tickets   Ticket[]
 }
 
 model Usuario {
   id                 String    @id @default(cuid())
-  nome               String
+  nome               String    @db.Text
   email              String    @unique
-
-  ticketsSolicitados Ticket[]  @relation("SolicitanteTickets")
-  ticketsAtribuidos  Ticket[]  @relation("ResponsavelTickets")
+  hashedPassword     String?   // Senha com hash, opcional inicialmente
+  fotoUrl            String?   @db.Text
+  ticketsSolicitados Ticket[]  @relation("TicketsSolicitados")
+  ticketsAtribuidos  Ticket[]  @relation("TicketsAtribuidos")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model Ticket {
   id                 String    @id @default(cuid())
-  problemDescription String    @db.Text // Renamed from 'descricao' for clarity
-
+  problemDescription String    @db.Text // Renomeado de 'descricao' para clareza
   prioridadeId       String
   prioridade         Prioridade @relation(fields: [prioridadeId], references: [id])
-
   tipoId             String
-  tipo               Tipo      @relation(fields: [tipoId], references: [id])
-
+  tipo               Tipo       @relation(fields: [tipoId], references: [id])
   ambienteId         String
-  ambiente           Ambiente  @relation(fields: [ambienteId], references: [id])
-
+  ambiente           Ambiente   @relation(fields: [ambienteId], references: [id])
   origemId           String
-  origem             Origem    @relation(fields: [origemId], references: [id])
-
+  origem             Origem     @relation(fields: [origemId], references: [id])
   solicitanteId      String
-  solicitante        Usuario   @relation("SolicitanteTickets", fields: [solicitanteId], references: [id])
-
+  solicitante        Usuario    @relation("TicketsSolicitados", fields: [solicitanteId], references: [id])
   responsavelId      String?
-  responsavel        Usuario?  @relation("ResponsavelTickets", fields: [responsavelId], references: [id])
-
-  evidencias         String    @db.Text
-  anexos             String?   @db.Text
+  responsavel        Usuario?   @relation("TicketsAtribuidos", fields: [responsavelId], references: [id])
+  evidencias         String     @db.Text
+  anexos             String?    @db.Text
   inicioAtendimento  DateTime?
   terminoAtendimento DateTime?
-  resolutionDetails  String?   @db.Text
-
+  resolutionDetails  String?    @db.Text
   situacaoId         String
-  situacao           Situacao  @relation(fields: [situacaoId], references: [id])
-
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  situacao           Situacao   @relation(fields: [situacaoId], references: [id])
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 }

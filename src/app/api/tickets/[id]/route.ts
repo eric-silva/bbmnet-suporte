@@ -3,11 +3,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { PERMITTED_ASSIGNEES } from '@/lib/constants';
-import { prioridadeValues, tipoValues, ambienteValues, origemValues, situacaoValues } from '@/types';
+import { prioridadeValues, tipoValues, ambienteValues, origemValues, situacaoValues, type TicketFormData } from '@/types';
 
 
-// Zod schema for incoming ticket data (uses string descriptions)
-const UpdateTicketSchema = z.object({
+// Zod schema for incoming ticket data (uses string descriptions from TicketFormData)
+const UpdateTicketApiSchema = z.object({
   problemDescription: z.string().min(10, 'A descrição do problema deve ter pelo menos 10 caracteres.'),
   priority: z.string().refine(val => prioridadeValues.includes(val), { message: "Prioridade inválida."}),
   type: z.string().refine(val => tipoValues.includes(val), { message: "Tipo inválido."}),
@@ -68,15 +68,15 @@ export async function PUT(
   try {
     const existingTicket = await prisma.ticket.findUnique({
       where: { id: params.id },
-      include: { situacao: true } // include current situation to check transitions
+      include: { situacao: true } 
     });
 
     if (!existingTicket) {
       return NextResponse.json({ message: 'Ticket not found' }, { status: 404 });
     }
 
-    const body = await request.json();
-    const parsed = UpdateTicketSchema.safeParse(body);
+    const body: TicketFormData = await request.json();
+    const parsed = UpdateTicketApiSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json({ message: 'Invalid input', errors: parsed.error.flatten().fieldErrors }, { status: 400 });
@@ -92,7 +92,11 @@ export async function PUT(
       const responsavel = await prisma.usuario.upsert({
         where: { email: data.responsavelEmail },
         update: { nome: responsavelDetails.name },
-        create: { email: data.responsavelEmail, nome: responsavelDetails.name },
+        create: { 
+          email: data.responsavelEmail, 
+          nome: responsavelDetails.name,
+          // hashedPassword and fotoUrl are not set here
+        },
       });
       responsavelConnectDisconnect = { responsavel: { connect: { id: responsavel.id } } };
     } else {
@@ -104,7 +108,7 @@ export async function PUT(
     const tipoRecord = await prisma.tipo.findUnique({ where: { descricao: data.type } });
     const ambienteRecord = await prisma.ambiente.findUnique({ where: { descricao: data.ambiente } });
     const origemRecord = await prisma.origem.findUnique({ where: { descricao: data.origem } });
-    const situacaoRecord = await prisma.situacao.findUnique({ where: { descricao: data.status } });
+    const situacaoRecord = await prisma.situacao.findUnique({ where: { descricao: data.status as string } }); // data.status is guaranteed by Zod
 
     if (!prioridadeRecord || !tipoRecord || !ambienteRecord || !origemRecord || !situacaoRecord) {
        const missing = [
@@ -149,7 +153,7 @@ export async function PUT(
     const updatedTicket = await prisma.ticket.update({
       where: { id: params.id },
       data: updatedTicketData,
-      include: { // Include related data in the response
+      include: { 
         prioridade: true, tipo: true, ambiente: true, origem: true, 
         solicitante: true, responsavel: true, situacao: true
       }

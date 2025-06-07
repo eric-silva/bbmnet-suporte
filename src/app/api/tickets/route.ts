@@ -3,19 +3,19 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { MOCK_CUSTOM_USER_SESSION_DATA, PERMITTED_ASSIGNEES } from '@/lib/constants';
-import { prioridadeValues, tipoValues, ambienteValues, origemValues, situacaoValues } from '@/types';
+import { prioridadeValues, tipoValues, ambienteValues, origemValues, situacaoValues, type TicketFormData } from '@/types';
 
-// Zod schema for incoming ticket data (uses string descriptions)
-const TicketSchema = z.object({
+// Zod schema for incoming ticket data (uses string descriptions from TicketFormData)
+const TicketApiSchema = z.object({
   problemDescription: z.string().min(10, 'A descrição do problema deve ter pelo menos 10 caracteres.'),
   priority: z.string().refine(val => prioridadeValues.includes(val), { message: "Prioridade inválida."}),
   type: z.string().refine(val => tipoValues.includes(val), { message: "Tipo inválido."}),
   responsavelEmail: z.string().email({ message: "E-mail inválido para responsável." }).nullable().or(z.literal('')),
   evidencias: z.string().min(1, 'O campo Evidências é obrigatório.'),
-  anexos: z.string().optional(),
+  anexos: z.string().optional().nullable(),
   ambiente: z.string().refine(val => ambienteValues.includes(val), { message: "Ambiente inválido."}),
   origem: z.string().refine(val => origemValues.includes(val), { message: "Origem inválida."}),
-  // status is handled by default on creation, so not in this schema for POST
+  // status is handled by default on creation (Para fazer)
 });
 
 
@@ -60,14 +60,15 @@ export async function POST(request: NextRequest) {
     if (!authenticatedUserEmail) {
         return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
     }
+    
     // Determine solicitanteName based on authenticated user or fallback
     // For mock, we use MOCK_CUSTOM_USER_SESSION_DATA, in real app, this would come from token/session
-    const solicitanteDetails = PERMITTED_ASSIGNEES.find(u => u.email === authenticatedUserEmail) || 
+    const solicitanteDetailsFromAuth = PERMITTED_ASSIGNEES.find(u => u.email === authenticatedUserEmail) || 
                                MOCK_CUSTOM_USER_SESSION_DATA;
 
 
-    const body = await request.json();
-    const parsed = TicketSchema.safeParse(body);
+    const body: TicketFormData = await request.json();
+    const parsed = TicketApiSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json({ message: 'Invalid input', errors: parsed.error.flatten().fieldErrors }, { status: 400 });
@@ -77,8 +78,12 @@ export async function POST(request: NextRequest) {
     // Find or create Solicitante
     const solicitante = await prisma.usuario.upsert({
       where: { email: authenticatedUserEmail },
-      update: { nome: solicitanteDetails.name || authenticatedUserEmail.split('@')[0] },
-      create: { email: authenticatedUserEmail, nome: solicitanteDetails.name || authenticatedUserEmail.split('@')[0] },
+      update: { nome: solicitanteDetailsFromAuth.name || authenticatedUserEmail.split('@')[0] },
+      create: { 
+        email: authenticatedUserEmail, 
+        nome: solicitanteDetailsFromAuth.name || authenticatedUserEmail.split('@')[0],
+        // hashedPassword and fotoUrl are not set here, would be part of user registration
+      },
     });
 
     // Find or create Responsavel if email is provided
@@ -89,7 +94,11 @@ export async function POST(request: NextRequest) {
       const responsavel = await prisma.usuario.upsert({
         where: { email: data.responsavelEmail },
         update: { nome: responsavelDetails.name },
-        create: { email: data.responsavelEmail, nome: responsavelDetails.name },
+        create: { 
+          email: data.responsavelEmail, 
+          nome: responsavelDetails.name,
+          // hashedPassword and fotoUrl are not set here
+        },
       });
       responsavelConnect = { connect: { id: responsavel.id } };
     }
@@ -125,7 +134,7 @@ export async function POST(request: NextRequest) {
         evidencias: data.evidencias,
         anexos: data.anexos,
       },
-       include: { // Include related data in the response
+       include: { 
         prioridade: true, tipo: true, ambiente: true, origem: true, 
         solicitante: true, responsavel: true, situacao: true
       }
