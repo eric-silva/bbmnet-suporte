@@ -1,29 +1,84 @@
-generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
-}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+generator client {
+  provider        = "prisma-client-js"
+  binaryTargets   = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+}
+
+model Prioridade {
+  id        String   @id @default(cuid())
+  descricao String   @unique
+  tickets   Ticket[]
+}
+
+model Tipo {
+  id        String   @id @default(cuid())
+  descricao String   @unique
+  tickets   Ticket[]
+}
+
+model Situacao {
+  id        String   @id @default(cuid())
+  descricao String   @unique
+  tickets   Ticket[]
+}
+
+model Ambiente {
+  id        String   @id @default(cuid())
+  descricao String   @unique
+  tickets   Ticket[]
+}
+
+model Origem {
+  id        String   @id @default(cuid())
+  descricao String   @unique
+  tickets   Ticket[]
+}
+
+model Usuario {
+  id                 String    @id @default(cuid())
+  nome               String
+  email              String    @unique
+
+  ticketsSolicitados Ticket[]  @relation("SolicitanteTickets")
+  ticketsAtribuidos  Ticket[]  @relation("ResponsavelTickets")
+}
+
 model Ticket {
   id                 String    @id @default(cuid())
-  problemDescription String    @db.Text
-  priority           String
-  type               String
-  solicitanteEmail   String
-  solicitanteName    String
-  responsavelEmail   String?
-  status             String
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  inicioAtendimento  DateTime?
-  terminoAtendimento DateTime?
+  problemDescription String    @db.Text // Renamed from 'descricao' for clarity
+
+  prioridadeId       String
+  prioridade         Prioridade @relation(fields: [prioridadeId], references: [id])
+
+  tipoId             String
+  tipo               Tipo      @relation(fields: [tipoId], references: [id])
+
+  ambienteId         String
+  ambiente           Ambiente  @relation(fields: [ambienteId], references: [id])
+
+  origemId           String
+  origem             Origem    @relation(fields: [origemId], references: [id])
+
+  solicitanteId      String
+  solicitante        Usuario   @relation("SolicitanteTickets", fields: [solicitanteId], references: [id])
+
+  responsavelId      String?
+  responsavel        Usuario?  @relation("ResponsavelTickets", fields: [responsavelId], references: [id])
+
   evidencias         String    @db.Text
   anexos             String?   @db.Text
-  ambiente           String
-  origem             String
+  inicioAtendimento  DateTime?
+  terminoAtendimento DateTime?
   resolutionDetails  String?   @db.Text
+
+  situacaoId         String
+  situacao           Situacao  @relation(fields: [situacaoId], references: [id])
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }

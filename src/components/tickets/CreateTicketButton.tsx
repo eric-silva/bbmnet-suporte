@@ -6,42 +6,42 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogTitle,
+  DialogTitle, // Import DialogTitle
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import { TicketForm } from './TicketForm';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'; // Import VisuallyHidden
+import { TicketForm, type TicketFormData } from './TicketForm';
 import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useSession } from '@/components/auth/AppProviders'; // Import useSession
+import { useSession } from '@/components/auth/AppProviders';
 import type { Ticket } from '@/types';
 
 interface CreateTicketButtonProps {
-  onTicketCreated?: () => void; // Callback to refresh ticket list
+  onTicketCreated?: () => void; 
 }
 
 export function CreateTicketButton({ onTicketCreated }: CreateTicketButtonProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const { getAuthHeaders } = useSession(); // Get auth headers hook
+  const { getAuthHeaders } = useSession(); 
 
-  const handleSubmit = async (formData: FormData) => {
-    const objectData: Record<string, any> = {};
-    formData.forEach((value, key) => { objectData[key] = value; });
-    
+  const handleSubmit = async (formData: TicketFormData) => { // formData is now TicketFormData
     try {
       const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: {
-          ...getAuthHeaders(), // Add auth headers
+          ...getAuthHeaders(), 
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(objectData),
+        body: JSON.stringify(formData), // Send TicketFormData directly
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || errorData.errors ? JSON.stringify(errorData.errors) : `HTTP error! status: ${response.status}`);
+        const errorMessages = errorData.errors 
+          ? Object.values(errorData.errors).flat().join('\n') 
+          : errorData.message;
+        throw new Error(errorMessages || `HTTP error! status: ${response.status}`);
       }
       
       const newTicket: Ticket = await response.json();
@@ -51,23 +51,13 @@ export function CreateTicketButton({ onTicketCreated }: CreateTicketButtonProps)
         variant: 'default',
       });
       setOpen(false);
-      onTicketCreated?.(); // Call the callback to refresh data
+      onTicketCreated?.(); 
       return { success: true, ticket: newTicket };
     } catch (error: any) {
       console.error("Erro ao Criar Ticket:", error);
-      let description = 'Ocorreu um erro desconhecido.';
-      try {
-        // Attempt to parse field errors if they exist
-        const parsedError = JSON.parse(error.message);
-        description = Object.values(parsedError).flat().join('\n');
-      } catch (e) {
-        // If parsing fails, use the original error message
-        description = error.message || 'Falha ao conectar com o servidor.';
-      }
-
       toast({
         title: "Erro ao Criar Ticket",
-        description: description,
+        description: error.message || 'Falha ao conectar com o servidor.',
         variant: 'destructive',
       });
       return { success: false, error: error.message };

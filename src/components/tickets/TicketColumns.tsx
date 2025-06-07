@@ -9,14 +9,6 @@ import { TicketStatusBadge } from './TicketStatusBadge';
 import { TicketPriorityIcon } from './TicketPriorityIcon';
 import { TicketTypeIcon } from './TicketTypeIcon';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PERMITTED_ASSIGNEES } from '@/lib/constants';
-
-const getAssigneeName = (email: string | null) => {
-  if (!email) return 'Não atribuído';
-  const assignee = PERMITTED_ASSIGNEES.find(a => a.email === email);
-  return assignee ? assignee.name : email;
-};
-
 
 export const getTicketColumns = (
   onEdit: (ticket: Ticket) => void
@@ -56,18 +48,18 @@ export const getTicketColumns = (
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <div className="font-medium">{row.getValue('id')}</div>,
+    cell: ({ row }) => <div className="font-medium">{row.original.id}</div>,
   },
   {
     accessorKey: 'problemDescription',
     header: 'Descrição do Problema',
     cell: ({ row }) => {
-      const description = row.getValue('problemDescription') as string;
+      const description = row.original.problemDescription;
       return <div className="truncate max-w-xs" title={description}>{description}</div>;
     },
   },
   {
-    accessorKey: 'priority',
+    accessorKey: 'prioridade.descricao', // Access nested property
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -77,13 +69,14 @@ export const getTicketColumns = (
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <TicketPriorityIcon priority={row.getValue('priority')} />,
+    cell: ({ row }) => <TicketPriorityIcon priorityDesc={row.original.prioridade.descricao} />,
     filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
-    }
+      return value.includes(row.original.prioridade.descricao)
+    },
+    accessorFn: (row) => row.prioridade.descricao, // For sorting/filtering
   },
   {
-    accessorKey: 'type',
+    accessorKey: 'tipo.descricao', // Access nested property
     header: ({ column }) => (
        <Button
         variant="ghost"
@@ -93,13 +86,14 @@ export const getTicketColumns = (
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <TicketTypeIcon type={row.getValue('type')} />,
+    cell: ({ row }) => <TicketTypeIcon typeDesc={row.original.tipo.descricao} />,
     filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
-    }
+      return value.includes(row.original.tipo.descricao)
+    },
+    accessorFn: (row) => row.tipo.descricao,
   },
   {
-    accessorKey: 'status',
+    accessorKey: 'situacao.descricao', // Access nested property
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -109,27 +103,35 @@ export const getTicketColumns = (
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <TicketStatusBadge status={row.getValue('status')} />,
+    cell: ({ row }) => <TicketStatusBadge statusDesc={row.original.situacao.descricao} />,
     filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
-    }
+      return value.includes(row.original.situacao.descricao)
+    },
+    accessorFn: (row) => row.situacao.descricao,
   },
   {
-    accessorKey: 'solicitanteName',
+    accessorKey: 'solicitante.nome', // Access nested property
     header: 'Solicitante',
+    cell: ({ row }) => row.original.solicitante.nome,
+    accessorFn: (row) => row.solicitante.nome,
   },
   {
-    accessorKey: 'responsavelEmail',
+    accessorKey: 'responsavel.nome', // Access nested property
     header: 'Responsável',
-    cell: ({ row }) => getAssigneeName(row.getValue('responsavelEmail')),
-  },
-    {
-    accessorKey: 'ambiente',
-    header: 'Ambiente',
+    cell: ({ row }) => row.original.responsavel?.nome || 'Não atribuído',
+    accessorFn: (row) => row.responsavel?.nome || 'Não atribuído',
   },
   {
-    accessorKey: 'origem',
+    accessorKey: 'ambiente.descricao', // Access nested property
+    header: 'Ambiente',
+    cell: ({ row }) => row.original.ambiente.descricao,
+    accessorFn: (row) => row.ambiente.descricao,
+  },
+  {
+    accessorKey: 'origem.descricao', // Access nested property
     header: 'Origem',
+    cell: ({ row }) => row.original.origem.descricao,
+    accessorFn: (row) => row.origem.descricao,
   },
   {
     accessorKey: 'createdAt',
@@ -142,7 +144,7 @@ export const getTicketColumns = (
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => new Date(row.getValue('createdAt')).toLocaleDateString(),
+    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
   },
   {
     id: 'actions',

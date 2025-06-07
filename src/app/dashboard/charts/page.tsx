@@ -30,15 +30,40 @@ const CHART_COLORS = [
   "hsl(346.8 77.2% 49.8%)",
 ];
 
-function aggregateTickets<K extends keyof Ticket>(
+// Type guard to check if a key is a direct property of Ticket
+function isDirectTicketKey(key: string): key is keyof Omit<Ticket, 'prioridade' | 'tipo' | 'ambiente' | 'origem' | 'solicitante' | 'responsavel' | 'situacao'> {
+  const directKeys: (keyof Omit<Ticket, 'prioridade' | 'tipo' | 'ambiente' | 'origem' | 'solicitante' | 'responsavel' | 'situacao'>)[] = [
+    'id', 'problemDescription', 'evidencias', 'anexos', 
+    'inicioAtendimento', 'terminoAtendimento', 'resolutionDetails', 
+    'createdAt', 'updatedAt', 'prioridadeId', 'tipoId', 'ambienteId', 'origemId', 
+    'solicitanteId', 'responsavelId', 'situacaoId'
+  ];
+  return directKeys.includes(key as any);
+}
+
+function aggregateTickets(
   tickets: Ticket[], 
-  key: K,
+  key: ChartableFieldKey, // Keep this as the specific keys we want to chart
   maxCategories: number = 10
 ): ChartDataItem[] {
   const counts: Record<string, number> = {};
   tickets.forEach(ticket => {
-    const keyValue = String(ticket[key] || 'Não especificado');
-    counts[keyValue] = (counts[keyValue] || 0) + 1;
+    let keyValue: string | null | undefined;
+
+    // Access nested properties for relational fields
+    if (key === 'prioridade') keyValue = ticket.prioridade?.descricao;
+    else if (key === 'situacao') keyValue = ticket.situacao?.descricao;
+    else if (key === 'tipo') keyValue = ticket.tipo?.descricao;
+    else if (key === 'ambiente') keyValue = ticket.ambiente?.descricao;
+    else if (key === 'origem') keyValue = ticket.origem?.descricao;
+    else if (key === 'responsavelEmail') keyValue = ticket.responsavel?.email; // Using email as value, name for label later
+    else if (key === 'solicitanteName') keyValue = ticket.solicitante?.nome;
+    else if (isDirectTicketKey(key)) { // Fallback for direct keys, though our chartableFields are relational
+        keyValue = String(ticket[key]);
+    }
+    
+    const finalKeyValue = String(keyValue || 'Não especificado');
+    counts[finalKeyValue] = (counts[finalKeyValue] || 0) + 1;
   });
 
   let sortedEntries = Object.entries(counts)
@@ -50,11 +75,20 @@ function aggregateTickets<K extends keyof Ticket>(
     sortedEntries = sortedEntries.slice(0, maxCategories - 1);
   }
 
-  const aggregatedData = sortedEntries.map(([name, value], index) => ({
-    name,
-    value,
-    fill: CHART_COLORS[index % CHART_COLORS.length],
-  }));
+  const aggregatedData = sortedEntries.map(([name, value], index) => {
+    let displayName = name;
+    if (key === 'responsavelEmail' && name !== 'Não especificado') {
+        // Attempt to find the responsible person's name for display
+        const responsibleTicket = tickets.find(t => t.responsavel?.email === name);
+        displayName = responsibleTicket?.responsavel?.nome || name; // Show name if found, else email
+    }
+    return {
+        name: displayName, // Use displayName for the chart label
+        value,
+        fill: CHART_COLORS[index % CHART_COLORS.length],
+    };
+});
+
 
   if (othersValue > 0) {
     aggregatedData.push({
@@ -67,10 +101,11 @@ function aggregateTickets<K extends keyof Ticket>(
   return aggregatedData;
 }
 
+
 function generateChartConfig(data: ChartDataItem[]): ChartConfig {
     const config: ChartConfig = {};
     data.forEach(item => {
-        config[item.name] = {
+        config[item.name] = { // Use item.name which is now potentially the display name
             label: item.name,
             color: item.fill,
         };
@@ -78,7 +113,9 @@ function generateChartConfig(data: ChartDataItem[]): ChartConfig {
     return config;
 }
 
-type ChartableFieldKey = 'priority' | 'status' | 'type' | 'ambiente' | 'origem' | 'responsavelEmail' | 'solicitanteName';
+
+type ChartableFieldKey = 'prioridade' | 'situacao' | 'tipo' | 'ambiente' | 'origem' | 'responsavelEmail' | 'solicitanteName';
+
 
 interface ChartableField {
   value: ChartableFieldKey;
@@ -89,12 +126,12 @@ interface ChartableField {
 }
 
 const chartableFields: ChartableField[] = [
-  { value: 'priority', label: 'Prioridade', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por nível de prioridade.' },
-  { value: 'status', label: 'Situação', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por status atual.' },
-  { value: 'type', label: 'Tipo', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por tipo de solicitação.' },
+  { value: 'prioridade', label: 'Prioridade', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por nível de prioridade.' },
+  { value: 'situacao', label: 'Situação', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por status atual.' },
+  { value: 'tipo', label: 'Tipo', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por tipo de solicitação.' },
   { value: 'ambiente', label: 'Ambiente', titlePrefix: 'Tickets por', description: 'Distribuição de tickets entre ambientes.'},
   { value: 'origem', label: 'Origem', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por origem do problema.'},
-  { value: 'responsavelEmail', label: 'Responsável', titlePrefix: 'Tickets por', description: 'Top 5 responsáveis com mais tickets.', maxCategories: 6 }, 
+  { value: 'responsavelEmail', label: 'Responsável', titlePrefix: 'Tickets por', description: 'Top 5 responsáveis com mais tickets (por e-mail).', maxCategories: 6 }, 
   { value: 'solicitanteName', label: 'Solicitante', titlePrefix: 'Tickets por', description: 'Top 5 solicitantes com mais tickets.', maxCategories: 6 }, 
 ];
 
@@ -131,7 +168,7 @@ export default function ChartsPage() {
             }
           }
         } catch (e) {
-          console.warn("Não foi possível analisar a resposta de erro como JSON:", e);
+          // console.warn("Não foi possível analisar a resposta de erro como JSON:", e);
         }
         throw new Error(errorMessage);
       }
@@ -142,8 +179,8 @@ export default function ChartsPage() {
       let userFriendlyDescription = "Não foi possível carregar os dados dos tickets para os gráficos.";
       if (error instanceof Error) {
         userFriendlyDescription = error.message;
-        if (error.message.includes("Status: 500")) {
-          userFriendlyDescription = "Ocorreu um erro inesperado no servidor ao buscar os tickets. Verifique os logs do servidor para mais detalhes ou tente novamente. Erro original: " + error.message;
+        if (error.message.includes("Status: 500") || error.message.toLowerCase().includes("prisma")) {
+          userFriendlyDescription = "Ocorreu um erro inesperado no servidor ao buscar os tickets. Verifique os logs do servidor para mais detalhes ou tente novamente. Erro: " + error.message;
         } else if (error.message.includes("HTTP error!")) {
           userFriendlyDescription = "Falha na comunicação com o servidor ao buscar os tickets. Detalhes: " + error.message;
         }
@@ -153,7 +190,7 @@ export default function ChartsPage() {
         description: userFriendlyDescription,
         variant: "destructive",
       });
-      setAllTickets([]); // Clear tickets on error
+      setAllTickets([]); 
     } finally {
       setIsLoadingTickets(false);
     }
@@ -168,7 +205,7 @@ export default function ChartsPage() {
       setIsProcessingChart(true);
       const { value, maxCategories } = selectedFieldInfo;
       
-      const data = aggregateTickets(allTickets, value as keyof Ticket, maxCategories);
+      const data = aggregateTickets(allTickets, value as ChartableFieldKey, maxCategories);
       setChartData(data);
       setChartConfig(generateChartConfig(data));
       setIsProcessingChart(false);
@@ -217,7 +254,7 @@ export default function ChartsPage() {
             <Select 
               onValueChange={handleFieldChange} 
               value={selectedFieldInfo?.value || CLEAR_SELECTION_VALUE}
-              disabled={isLoadingTickets || (allTickets.length === 0 && !isLoadingTickets)} // Disable if loading OR if loaded and no tickets
+              disabled={isLoadingTickets || (allTickets.length === 0 && !isLoadingTickets)}
             >
               <SelectTrigger className="w-full sm:w-[280px] h-10">
                 <SelectValue placeholder={isLoadingTickets ? "Carregando dados..." : (allTickets.length === 0 ? "Sem tickets para analisar" : "Selecione um tipo de gráfico...")} />
@@ -240,7 +277,7 @@ export default function ChartsPage() {
         </Card>
 
         <div id="chart-to-print-area" ref={chartAreaRef}>
-          {isLoadingTickets && allTickets.length === 0 ? ( // Show skeleton only if loading and no tickets yet (initial load)
+          {isLoadingTickets && allTickets.length === 0 ? ( 
              <Card className="h-[450px] flex flex-col items-center justify-center text-center shadow-lg charts-page-controls-print-hide">
               <CardHeader>
                 <CardTitle>Carregando Dados...</CardTitle>
@@ -288,4 +325,3 @@ export default function ChartsPage() {
     </ScrollArea>
   );
 }
-

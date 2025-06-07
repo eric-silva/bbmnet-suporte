@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { TicketDataTable } from '@/components/tickets/TicketDataTable';
 import { getTicketColumns } from '@/components/tickets/TicketColumns';
 import { CreateTicketButton } from '@/components/tickets/CreateTicketButton';
-import type { Ticket } from '@/types';
+import type { Ticket, TicketFormData } from '@/types'; // TicketFormData might be needed if types are shared more
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from '@/components/auth/AppProviders';
 import {
@@ -35,42 +35,40 @@ export default function DashboardPage() {
       });
       if (!response.ok) {
         let errorJson;
-        let errorMessage = `HTTP error! Status: ${response.status} ${response.statusText || ''}`;
+        let errorMessageText = `HTTP error! Status: ${response.status} ${response.statusText || ''}`;
         try {
           errorJson = await response.json();
           if (errorJson && errorJson.message) {
-            errorMessage = errorJson.message;
+            errorMessageText = errorJson.message;
             if (process.env.NODE_ENV !== 'production' && errorJson.details) {
                  const detailsString = typeof errorJson.details === 'string' ? errorJson.details : JSON.stringify(errorJson.details);
-                 errorMessage += ` (Detalhes: ${detailsString})`;
+                 errorMessageText += ` (Detalhes: ${detailsString})`;
             }
           }
         } catch (e) {
-          console.warn("Não foi possível analisar a resposta de erro como JSON:", e);
+          // console.warn("Não foi possível analisar a resposta de erro como JSON:", e);
         }
-        throw new Error(errorMessage);
+        throw new Error(errorMessageText);
       }
       const fetchedTickets: Ticket[] = await response.json();
       setTickets(fetchedTickets);
     } catch (error) {
       console.error("Falha ao buscar tickets:", error);
-      
       let userFriendlyDescription = "Não foi possível carregar os dados dos tickets. Por favor, tente novamente mais tarde.";
       if (error instanceof Error) {
         userFriendlyDescription = error.message;
-        if (error.message.includes("Status: 500")) {
-          userFriendlyDescription = "Ocorreu um erro inesperado no servidor ao buscar os tickets. Verifique os logs do servidor para mais detalhes ou tente novamente. Erro original: " + error.message;
+        if (error.message.includes("Status: 500") || error.message.toLowerCase().includes("prisma")) {
+          userFriendlyDescription = "Ocorreu um erro inesperado no servidor ao buscar os tickets. Verifique os logs do servidor para mais detalhes ou tente novamente. Erro: " + error.message;
         } else if (error.message.includes("HTTP error!")) {
           userFriendlyDescription = "Falha na comunicação com o servidor ao buscar os tickets. Detalhes: " + error.message;
         }
       }
-
       toast({
         title: "Erro ao Buscar Tickets",
         description: userFriendlyDescription,
         variant: "destructive",
       });
-      setTickets([]); // Clear tickets on error to avoid showing stale data
+      setTickets([]);
     } finally {
       setIsLoading(false);
     }
@@ -86,12 +84,9 @@ export default function DashboardPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateTicket = async (formData: FormData, ticketId: string) => {
+  const handleUpdateTicket = async (formData: TicketFormData, ticketId: string) => {
     if (!ticketId) return { success: false, error: 'Nenhum ticket selecionado para atualização.' };
     
-    const objectData: Record<string, any> = {};
-    formData.forEach((value, key) => { objectData[key] = value; });
-
     try {
       const response = await fetch(`/api/tickets/${ticketId}`, {
         method: 'PUT',
@@ -99,7 +94,7 @@ export default function DashboardPage() {
           ...getAuthHeaders(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(objectData),
+        body: JSON.stringify(formData), // Send TicketFormData directly
       });
 
       if (!response.ok) {
@@ -110,7 +105,7 @@ export default function DashboardPage() {
       const updatedTicket = await response.json();
       setIsEditModalOpen(false);
       setSelectedTicket(null);
-      fetchTickets(); // Refetch tickets to update the list
+      fetchTickets(); 
       return { success: true, ticket: updatedTicket };
     } catch (error: any) {
       console.error("Falha ao atualizar ticket:", error);
@@ -120,7 +115,7 @@ export default function DashboardPage() {
   
   const columns = React.useMemo(() => getTicketColumns(handleEdit), []);
 
-  if (isLoading && tickets.length === 0) { // Show skeleton only on initial load or if tickets are cleared due to error
+  if (isLoading && tickets.length === 0) { 
     return (
       <div className="container mx-auto py-10 px-4 md:px-6">
         <div className="flex justify-between items-center mb-8">
@@ -162,7 +157,7 @@ export default function DashboardPage() {
             </VisuallyHidden>
             <TicketForm
               ticket={selectedTicket}
-              onSubmit={(formData) => handleUpdateTicket(formData, selectedTicket.id)}
+              onSubmit={(formData) => handleUpdateTicket(formData as TicketFormData, selectedTicket.id)}
               onCancel={() => setIsEditModalOpen(false)}
               formMode="edit"
             />

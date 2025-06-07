@@ -1,13 +1,16 @@
 
 import { NextResponse } from 'next/server';
-import { environments, type Environment } from '@/types';
+import { prisma } from '@/lib/prisma';
+import type { Ambiente } from '@/types';
 
 export async function GET() {
   try {
-    const envs: Environment[] = [...environments];
-    return NextResponse.json(envs);
+    const environments: Ambiente[] = await prisma.ambiente.findMany({
+      orderBy: { descricao: 'asc' }
+    });
+    return NextResponse.json(environments);
   } catch (error) {
     console.error('Failed to fetch environments:', error);
-    return NextResponse.json({ message: 'Failed to fetch environments' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to fetch environments from DB' }, { status: 500 });
   }
 }

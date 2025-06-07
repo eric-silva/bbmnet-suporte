@@ -1,13 +1,16 @@
 
 import { NextResponse } from 'next/server';
-import { origins, type Origin } from '@/types';
+import { prisma } from '@/lib/prisma';
+import type { Origem } from '@/types';
 
 export async function GET() {
   try {
-    const orgs: Origin[] = [...origins];
-    return NextResponse.json(orgs);
+    const origins: Origem[] = await prisma.origem.findMany({
+      orderBy: { descricao: 'asc' }
+    });
+    return NextResponse.json(origins);
   } catch (error) {
     console.error('Failed to fetch origins:', error);
-    return NextResponse.json({ message: 'Failed to fetch origins' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to fetch origins from DB' }, { status: 500 });
   }
 }

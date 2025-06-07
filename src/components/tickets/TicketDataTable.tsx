@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -30,10 +30,10 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Ticket } from '@/types';
+import type { Ticket, BaseEntity } from '@/types';
 import { ChevronDown } from 'lucide-react';
 import { DataTableFacetedFilter } from './DataTableFacetedFilter';
-import { ticketStatuses, priorities, ticketTypes } from '@/types';
+import { useSession } from '@/components/auth/AppProviders';
 
 
 interface TicketDataTableProps {
@@ -47,6 +47,35 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState('');
+
+  const [statusOptions, setStatusOptions] = useState<{label: string, value: string}[]>([]);
+  const [priorityOptions, setPriorityOptions] = useState<{label: string, value: string}[]>([]);
+  const [typeOptions, setTypeOptions] = useState<{label: string, value: string}[]>([]);
+  const { getAuthHeaders } = useSession();
+
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const headers = getAuthHeaders();
+        const [statusesRes, prioritiesRes, typesRes] = await Promise.all([
+          fetch('/api/meta/situacoes', { headers }),
+          fetch('/api/meta/priorities', { headers }),
+          fetch('/api/meta/tipos', { headers }),
+        ]);
+        const statuses: BaseEntity[] = await statusesRes.json();
+        const priorities: BaseEntity[] = await prioritiesRes.json();
+        const types: BaseEntity[] = await typesRes.json();
+
+        setStatusOptions(statuses.map(s => ({ label: s.descricao, value: s.descricao })));
+        setPriorityOptions(priorities.map(p => ({ label: p.descricao, value: p.descricao })));
+        setTypeOptions(types.map(t => ({ label: t.descricao, value: t.descricao })));
+      } catch (error) {
+        console.error("Failed to fetch filter options for table", error);
+      }
+    };
+    fetchFilterOptions();
+  }, [getAuthHeaders]);
+
 
   const table = useReactTable({
     data,
@@ -72,6 +101,21 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
   
   const isFiltered = table.getState().columnFilters.length > 0 || globalFilter.length > 0;
 
+  const columnDisplayNames: Record<string, string> = {
+    'id': 'ID',
+    'problemDescription': 'Descrição do Problema',
+    'prioridade.descricao': 'Prioridade',
+    'tipo.descricao': 'Tipo',
+    'situacao.descricao': 'Situação',
+    'solicitante.nome': 'Solicitante',
+    'responsavel.nome': 'Responsável',
+    'ambiente.descricao': 'Ambiente',
+    'origem.descricao': 'Origem',
+    'createdAt': 'Abertura',
+    'actions': 'Ações',
+    'select': 'Selecionar',
+  };
+
 
   return (
     <div className="space-y-4 p-4 bg-card rounded-lg shadow-lg">
@@ -83,25 +127,25 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
           className="max-w-sm h-10"
         />
         <div className="flex items-center gap-2">
-          {table.getColumn("status") && (
+          {table.getColumn("situacao.descricao") && statusOptions.length > 0 && (
             <DataTableFacetedFilter
-              column={table.getColumn("status")}
+              column={table.getColumn("situacao.descricao")}
               title="Situação"
-              options={ticketStatuses.map(s => ({label: s, value: s}))}
+              options={statusOptions}
             />
           )}
-          {table.getColumn("priority") && (
+          {table.getColumn("prioridade.descricao") && priorityOptions.length > 0 && (
             <DataTableFacetedFilter
-              column={table.getColumn("priority")}
+              column={table.getColumn("prioridade.descricao")}
               title="Prioridade"
-              options={priorities.map(p => ({label: p, value: p}))}
+              options={priorityOptions}
             />
           )}
-          {table.getColumn("type") && (
+          {table.getColumn("tipo.descricao") && typeOptions.length > 0 && (
             <DataTableFacetedFilter
-              column={table.getColumn("type")}
+              column={table.getColumn("tipo.descricao")}
               title="Tipo"
-              options={ticketTypes.map(t => ({label: t, value: t}))}
+              options={typeOptions}
             />
           )}
           <DropdownMenu>
@@ -124,13 +168,7 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
                         column.toggleVisibility(!!value)
                       }
                     >
-                      {column.id === 'problemDescription' ? 'Descrição do Problema' : 
-                       column.id === 'solicitanteName' ? 'Solicitante' :
-                       column.id === 'responsavelEmail' ? 'Responsável' :
-                       column.id === 'createdAt' ? 'Abertura' :
-                       column.id === 'ambiente' ? 'Ambiente' :
-                       column.id === 'origem' ? 'Origem' :
-                       column.id}
+                      {columnDisplayNames[column.id] || column.id}
                     </DropdownMenuCheckboxItem>
                   );
                 })}
