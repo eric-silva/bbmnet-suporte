@@ -150,6 +150,7 @@ export default function ChartsPage() {
 
   const currentChartTitle = selectedFieldInfo ? `${selectedFieldInfo.titlePrefix} ${selectedFieldInfo.label}` : 'Selecione um Gráfico';
   const currentChartDescription = selectedFieldInfo ? selectedFieldInfo.description : 'Escolha uma categoria para visualizar a distribuição dos tickets.';
+  const isChartReady = !!(selectedFieldInfo && chartData && chartConfig && !isProcessingChart && !isLoadingTickets);
 
   return (
     <ScrollArea className="h-full">
@@ -163,7 +164,7 @@ export default function ChartsPage() {
                 Voltar ao Dashboard
               </Button>
             </Link>
-            <SaveToPdfButton />
+            <SaveToPdfButton isChartReady={isChartReady} />
           </div>
         </div>
 
@@ -205,11 +206,11 @@ export default function ChartsPage() {
             <div className="flex justify-center items-center h-[450px] charts-page-controls-print-hide">
                <Skeleton className="w-full h-[400px] rounded-lg" />
             </div>
-          ) : selectedFieldInfo && chartData && chartConfig ? (
+          ) : isChartReady ? (
             <TicketCountChart 
               title={currentChartTitle} 
-              data={chartData} 
-              chartConfig={chartConfig} 
+              data={chartData!} 
+              chartConfig={chartConfig!} 
               description={currentChartDescription} 
             />
           ) : (
@@ -228,5 +229,3 @@ export default function ChartsPage() {
     </ScrollArea>
   );
 }
-
-    
