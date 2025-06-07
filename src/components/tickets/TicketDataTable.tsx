@@ -62,15 +62,50 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
           fetch('/api/meta/priorities', { headers }),
           fetch('/api/meta/tipos', { headers }),
         ]);
-        const statuses: BaseEntity[] = await statusesRes.json();
-        const priorities: BaseEntity[] = await prioritiesRes.json();
-        const types: BaseEntity[] = await typesRes.json();
+
+        if (!statusesRes.ok) {
+          const errorText = await statusesRes.text();
+          throw new Error(`Failed to fetch statuses: ${statusesRes.status} ${statusesRes.statusText}. Response: ${errorText}`);
+        }
+        if (!prioritiesRes.ok) {
+          const errorText = await prioritiesRes.text();
+          throw new Error(`Failed to fetch priorities: ${prioritiesRes.status} ${prioritiesRes.statusText}. Response: ${errorText}`);
+        }
+        if (!typesRes.ok) {
+          const errorText = await typesRes.text();
+          throw new Error(`Failed to fetch types: ${typesRes.status} ${typesRes.statusText}. Response: ${errorText}`);
+        }
+
+        const statusesData = await statusesRes.json();
+        const prioritiesData = await prioritiesRes.json();
+        const typesData = await typesRes.json();
+
+        if (!Array.isArray(statusesData)) {
+            console.error("Fetched statuses is not an array:", statusesData);
+            throw new Error("Invalid data format for statuses. Expected an array.");
+        }
+        if (!Array.isArray(prioritiesData)) {
+            console.error("Fetched priorities is not an array:", prioritiesData);
+            throw new Error("Invalid data format for priorities. Expected an array.");
+        }
+        if (!Array.isArray(typesData)) {
+            console.error("Fetched types is not an array:", typesData);
+            throw new Error("Invalid data format for types. Expected an array.");
+        }
+        
+        const statuses: BaseEntity[] = statusesData;
+        const priorities: BaseEntity[] = prioritiesData;
+        const types: BaseEntity[] = typesData;
 
         setStatusOptions(statuses.map(s => ({ label: s.descricao, value: s.descricao })));
         setPriorityOptions(priorities.map(p => ({ label: p.descricao, value: p.descricao })));
         setTypeOptions(types.map(t => ({ label: t.descricao, value: t.descricao })));
       } catch (error) {
-        console.error("Failed to fetch filter options for table", error);
+        console.error("Failed to fetch filter options for table:", error);
+        // Optionally, set options to empty arrays or show a toast message
+        setStatusOptions([]);
+        setPriorityOptions([]);
+        setTypeOptions([]);
       }
     };
     fetchFilterOptions();
