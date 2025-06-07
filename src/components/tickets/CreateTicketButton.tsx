@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogTrigger, // Added DialogTrigger here
+  DialogTitle, // Added DialogTitle import
+  DialogTrigger,
 } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'; // Added VisuallyHidden import
 import { TicketForm } from './TicketForm';
 import { createTicketAction } from '@/app/actions/tickets';
 import { PlusCircle } from 'lucide-react';
@@ -26,6 +28,8 @@ export function CreateTicketButton() {
         variant: 'default',
       });
       setOpen(false);
+      // Consider revalidating path or refetching tickets on the dashboard page
+      // For example, if you pass a callback: `onTicketCreated?.()`
     } else {
       const errorMessages = result.error ?
         typeof result.error === 'string' ? result.error :
@@ -49,6 +53,9 @@ export function CreateTicketButton() {
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+        <VisuallyHidden>
+          <DialogTitle>Criar Novo Ticket</DialogTitle>
+        </VisuallyHidden>
         <TicketForm
           onSubmit={handleSubmit}
           onCancel={() => setOpen(false)}
