@@ -58,6 +58,10 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
     )
   }
 
+  const pieOuterRadius = 100; // Reduced from 120
+  const pieInnerRadius = 50;  // Reduced from 60
+  const labelPositionOffset = 20; // Reduced from 30
+
   return (
     <Card className="flex flex-col h-full shadow-md">
       <CardHeader className="items-center pb-0">
@@ -78,15 +82,16 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
               data={data}
               dataKey="value"
               nameKey="name"
-              innerRadius={60} 
-              outerRadius={120}
+              innerRadius={pieInnerRadius} 
+              outerRadius={pieOuterRadius}
               strokeWidth={2}
               labelLine={false}
               label={({ name, percent, x, y, textAnchor, payload }) => {
                 const RADIAN = Math.PI / 180;
-                const radius = 120 + 30; // Outer radius + label offset
-                const lx = x + (radius * Math.cos(-payload.midAngle * RADIAN));
-                const ly = y + (radius * Math.sin(-payload.midAngle * RADIAN));
+                // x and y are the center of the pie (cx, cy)
+                const positioningRadius = pieOuterRadius + labelPositionOffset;
+                const lx = x + (positioningRadius * Math.cos(-payload.midAngle * RADIAN));
+                const ly = y + (positioningRadius * Math.sin(-payload.midAngle * RADIAN));
                 return (
                   <text
                     x={lx}
