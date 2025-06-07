@@ -1,8 +1,8 @@
 
 datasource db {
-  provider     = "postgresql"
-  url          = env("DATABASE_URL")
-  relationMode = "prisma"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -11,79 +11,94 @@ generator client {
 }
 
 model Prioridade {
-  id          String   @id @default(cuid())
-  descricao   String   @unique @db.Text
-  tickets     Ticket[]
+  id        String   @id @default(cuid())
+  descricao String   @unique @db.Text
+  tickets   Ticket[]
 }
 
 model Tipo {
-  id          String   @id @default(cuid())
-  descricao   String   @unique @db.Text
-  tickets     Ticket[]
+  id        String   @id @default(cuid())
+  descricao String   @unique @db.Text
+  tickets   Ticket[]
 }
 
 model Situacao {
-  id          String   @id @default(cuid())
-  descricao   String   @unique @db.Text
-  tickets     Ticket[]
+  id        String   @id @default(cuid())
+  descricao String   @unique @db.Text
+  tickets   Ticket[]
 }
 
 model Ambiente {
-  id          String   @id @default(cuid())
-  descricao   String   @unique @db.Text
-  tickets     Ticket[]
+  id        String   @id @default(cuid())
+  descricao String   @unique @db.Text
+  tickets   Ticket[]
 }
 
 model Origem {
-  id          String   @id @default(cuid())
-  descricao   String   @unique @db.Text
-  tickets     Ticket[]
+  id        String   @id @default(cuid())
+  descricao String   @unique @db.Text
+  tickets   Ticket[]
 }
 
 model Usuario {
-  id                 String    @id @default(cuid())
-  nome               String    @db.Text
-  email              String    @unique
-  hashedPassword     String?
-  fotoUrl            String?
-  ticketsSolicitados Ticket[]  @relation("TicketsSolicitados")
-  ticketsAtribuidos  Ticket[]  @relation("TicketsAtribuidos")
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  nome             String    @db.Text
+  email            String    @unique // Email should be unique for login
+  hashedPassword   String? // For storing hashed passwords
+  fotoUrl          String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  ticketsCriados   Ticket[]  @relation("SolicitanteTickets")
+  ticketsAtribuidos Ticket[]  @relation("ResponsavelTickets")
 }
 
 model Ticket {
   id                 String    @id @default(cuid())
-  numeroTicket       String    @unique // Novo campo para TCK-XXXX
-  problemDescription String    @db.Text
-
+  numeroTicket       String    @unique // TCK-001
+  problemDescription String    @db.Text // Changed from 'descricao' to match existing usage
   prioridadeId       String
   prioridade         Prioridade @relation(fields: [prioridadeId], references: [id])
-
   tipoId             String
-  tipo               Tipo       @relation(fields: [tipoId], references: [id])
-
+  tipo               Tipo      @relation(fields: [tipoId], references: [id])
   ambienteId         String
-  ambiente           Ambiente   @relation(fields: [ambienteId], references: [id])
-
+  ambiente           Ambiente  @relation(fields: [ambienteId], references: [id])
   origemId           String
-  origem             Origem     @relation(fields: [origemId], references: [id])
-
+  origem             Origem    @relation(fields: [origemId], references: [id])
   solicitanteId      String
-  solicitante        Usuario    @relation("TicketsSolicitados", fields: [solicitanteId], references: [id])
-
+  solicitante        Usuario   @relation("SolicitanteTickets", fields: [solicitanteId], references: [id])
   responsavelId      String?
-  responsavel        Usuario?   @relation("TicketsAtribuidos", fields: [responsavelId], references: [id])
-  
+  responsavel        Usuario?  @relation("ResponsavelTickets", fields: [responsavelId], references: [id])
   evidencias         String    @db.Text
   anexos             String?   @db.Text
   inicioAtendimento  DateTime?
   terminoAtendimento DateTime?
   resolutionDetails  String?   @db.Text
-
   situacaoId         String
-  situacao           Situacao   @relation(fields: [situacaoId], references: [id])
-
+  situacao           Situacao  @relation(fields: [situacaoId], references: [id])
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+
+  @@index([prioridadeId])
+  @@index([tipoId])
+  @@index([ambienteId])
+  @@index([origemId])
+  @@index([solicitanteId])
+  @@index([responsavelId])
+  @@index([situacaoId])
+}
+
+model Menu {
+  id              String  @id @default(cuid())
+  titulo          String
+  nomeIcone       String  // e.g., "Home", "Users", "Settings"
+  menuPrincipalId String?
+  isAtivo         Boolean @default(true)
+
+  menuPrincipal   Menu?   @relation("SubMenuItems", fields: [menuPrincipalId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  subMenus        Menu[]  @relation("SubMenuItems")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([menuPrincipalId])
 }

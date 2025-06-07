@@ -15,7 +15,7 @@ export interface Origem extends BaseEntity {}
 export interface Usuario {
   id: string;
   nome: string;
-  email: string; 
+  email: string;
   hashedPassword?: string | null;
   fotoUrl?: string | null;
   createdAt: string; 
@@ -24,7 +24,7 @@ export interface Usuario {
 
 export interface Ticket {
   id: string;
-  numeroTicket: string; // Novo campo
+  numeroTicket: string;
   problemDescription: string;
   
   prioridadeId: string;
@@ -70,4 +70,19 @@ export interface TicketFormData {
   anexos?: string | null;
   ambiente: string; 
   origem: string;   
+}
+
+// For Menu
+export interface MenuItem {
+  id: string;
+  titulo: string;
+  nomeIcone: string;
+  menuPrincipalId: string | null;
+  isAtivo: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface StructuredMenuItem extends MenuItem {
+  subMenus: MenuItem[];
 }
