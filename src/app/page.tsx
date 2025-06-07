@@ -1,26 +1,62 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useSession } from '@/components/auth/AppProviders';
-import { SignInButton } from '@/components/auth/SignInButton';
-import { LifeBuoy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { LifeBuoy, LogIn, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+const loginSchema = z.object({
+  email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
+  password: z.string().min(1, { message: 'A senha é obrigatória.' }),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function HomePage() {
-  const { session } = useSession();
+  const { session, signIn } = useSession();
   const router = useRouter();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // O redirecionamento agora é principalmente tratado em AppProviders
-  // Mas podemos manter uma verificação aqui como uma camada adicional ou para UI específica.
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+  });
+
   useEffect(() => {
     if (session.status === 'authenticated') {
-      // router.push('/dashboard'); // AppProviders já deve lidar com isso
+      router.push('/dashboard');
     }
   }, [session.status, router]);
 
+  const onSubmit = async (data: LoginFormValues) => {
+    setIsSubmitting(true);
+    const result = await signIn(data.email, data.password);
+    if (!result.success) {
+      toast({
+        title: 'Falha no Login',
+        description: result.error || 'Ocorreu um erro ao tentar fazer login.',
+        variant: 'destructive',
+      });
+    }
+    // O redirecionamento em caso de sucesso é tratado pelo useEffect ou pelo AppProviders
+    setIsSubmitting(false);
+  };
+  
+  // Se estiver autenticando ou já autenticado, mostra tela de carregamento para redirecionar
   if (session.status === 'loading' || session.status === 'authenticated') {
-    // Mostrar um spinner/carregador mais robusto se MSAL estiver em progresso
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
         <LifeBuoy className="h-16 w-16 text-primary mb-6 animate-pulse" />
@@ -32,22 +68,62 @@ export default function HomePage() {
   // session.status === 'unauthenticated'
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
-      <div className="max-w-md w-full text-center bg-card p-8 rounded-xl shadow-2xl">
-        <LifeBuoy className="h-16 w-16 text-primary mx-auto mb-6" />
-        <h1 className="text-4xl font-bold mb-4 font-headline text-primary">
-          BBMNET Suporte
-        </h1>
-        <p className="text-muted-foreground mb-8 text-lg">
-          Por favor, faça login para gerenciar os tickets de suporte.
-        </p>
-        <SignInButton />
-        <p className="mt-6 text-xs text-muted-foreground">
-          Utilize sua conta Microsoft corporativa.
-        </p>
-      </div>
-       <footer className="absolute bottom-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} BBMNET. Todos os direitos reservados.
-        </footer>
+      <Card className="w-full max-w-md shadow-2xl">
+        <CardHeader className="text-center">
+          <LifeBuoy className="h-16 w-16 text-primary mx-auto mb-4" />
+          <CardTitle className="text-3xl font-bold font-headline text-primary">
+            BBMNET Suporte
+          </CardTitle>
+          <CardDescription className="text-lg">
+            Acesse sua conta para gerenciar os tickets.
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <CardContent className="space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                {...register('email')}
+                disabled={isSubmitting}
+              />
+              {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="********"
+                {...register('password')}
+                disabled={isSubmitting}
+              />
+              {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col">
+            <Button type="submit" className="w-full font-headline" size="lg" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <LogIn className="mr-2 h-5 w-5" />
+              )}
+              Entrar
+            </Button>
+            {session.error && (
+                <p className="mt-3 text-sm text-center text-destructive">{session.error}</p>
+            )}
+             <p className="mt-6 text-xs text-muted-foreground text-center">
+                (Use: user@example.com / password123 para teste)
+            </p>
+          </CardFooter>
+        </form>
+      </Card>
+      <footer className="absolute bottom-4 text-center text-sm text-muted-foreground">
+        &copy; {new Date().getFullYear()} BBMNET. Todos os direitos reservados.
+      </footer>
     </div>
   );
 }

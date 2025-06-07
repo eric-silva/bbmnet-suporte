@@ -15,11 +15,9 @@ export default function DashboardLayout({
   const { session } = useSession();
   const router = useRouter();
 
-  // A lógica de redirecionamento principal está em AppProviders/AuthManager
-  // Este useEffect pode ser simplificado ou servir como uma camada extra.
   useEffect(() => {
     if (session.status === 'unauthenticated') {
-      // router.push('/'); // AppProviders já deve lidar com isso
+       router.push('/'); 
     }
   }, [session.status, router]);
 
@@ -33,8 +31,8 @@ export default function DashboardLayout({
   }
   
   if (session.status === 'unauthenticated') {
-     // Teoricamente, AppProviders já deveria ter redirecionado.
-     // Mas como uma segurança, podemos mostrar algo ou forçar o redirecionamento.
+    // AppProviders já deve ter redirecionado.
+    // Mas como uma segurança, podemos mostrar algo ou forçar o redirecionamento.
     return (
        <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
         <LifeBuoy className="h-16 w-16 text-primary mb-6" />

@@ -23,20 +23,23 @@ export function UserNav() {
   const handleSignOut = async () => {
     setIsSigningOut(true);
     await signOut();
-    // O MSAL cuidará do redirecionamento.
-    // Não é necessário definir setIsSigningOut(false) aqui.
+    // O AppProviders cuidará do redirecionamento.
   };
 
+  if (session.status === 'loading') {
+    return (
+      <Button variant="ghost" className="relative h-10 w-10 rounded-full" disabled>
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </Button>
+    );
+  }
+
   if (session.status !== 'authenticated' || !session.user) {
-    // Poderia retornar um Skeleton aqui se session.status === 'loading'
-    return null;
+    return null; // Ou um botão de login, dependendo do design
   }
 
   const { name, email } = session.user;
-  // MSAL geralmente não fornece uma URL de imagem diretamente no objeto da conta.
-  // Se você precisar de uma imagem, precisaria buscá-la via Microsoft Graph API usando um token de acesso.
-  // Por enquanto, vamos usar um fallback.
-  const image = null; // Substitua se você implementar o carregamento de imagem do Graph
+  const image = null; // Placeholder, imagem do usuário não está no mock simples
   const fallbackName = name ? name.charAt(0).toUpperCase() : (email ? email.charAt(0).toUpperCase() : <UserCircle />);
 
   return (

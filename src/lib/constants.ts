@@ -1,7 +1,7 @@
 
 import type { Assignee } from '@/types';
 
-// Domínios permitidos para e-mails de responsáveis (não mais usado para login).
+// Domínios permitidos (não usado ativamente no mock atual, mas pode ser útil no futuro)
 export const ALLOWED_DOMAINS = ["pitang.com", "novobbmnet.com.br", "bbmnet.com.br", "example.com"];
 
 // Lista de usuários que podem ser atribuídos como responsáveis.
@@ -13,10 +13,22 @@ export const PERMITTED_ASSIGNEES: Assignee[] = [
   { email: "eva@example.com", name: "Eva Green (Exemplo)" },
 ];
 
-// Usuário mock - não mais usado para simular o login do usuário atual,
-// mas ainda pode ser usado em `actions/tickets.ts` como fallback ou para solicitantes padrão.
+// Usuário mock para criação de tickets (servidor) e fallback.
 export const MOCK_USER = {
   name: "Usuário Mock Padrão",
-  email: "mock.user@example.com", 
-  image: "https://placehold.co/100x100.png", // Não usado ativamente no UserNav com MSAL por padrão
+  email: "mock.user@example.com",
+  image: "https://placehold.co/100x100.png",
+};
+
+// Credenciais mockadas para o sistema de login customizado
+export const MOCK_CUSTOM_USER_CREDENTIALS = {
+  email: "user@example.com",
+  password: "password123",
+};
+
+// Dados do usuário mockado para a sessão após login customizado
+export const MOCK_CUSTOM_USER_SESSION_DATA = {
+  name: "Usuário Exemplo",
+  email: MOCK_CUSTOM_USER_CREDENTIALS.email,
+  id: "mock-user-id-123",
 };
