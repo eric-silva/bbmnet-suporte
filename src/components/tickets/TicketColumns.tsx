@@ -59,7 +59,8 @@ export const getTicketColumns = (
     },
   },
   {
-    accessorKey: 'prioridade.descricao', // Access nested property
+    id: 'prioridade.descricao', // Explicit ID
+    accessorKey: 'prioridade.descricao',
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -73,10 +74,10 @@ export const getTicketColumns = (
     filterFn: (row, id, value) => {
       return value.includes(row.original.prioridade.descricao)
     },
-    accessorFn: (row) => row.prioridade.descricao, // For sorting/filtering
   },
   {
-    accessorKey: 'tipo.descricao', // Access nested property
+    id: 'tipo.descricao', // Explicit ID
+    accessorKey: 'tipo.descricao',
     header: ({ column }) => (
        <Button
         variant="ghost"
@@ -90,10 +91,10 @@ export const getTicketColumns = (
     filterFn: (row, id, value) => {
       return value.includes(row.original.tipo.descricao)
     },
-    accessorFn: (row) => row.tipo.descricao,
   },
   {
-    accessorKey: 'situacao.descricao', // Access nested property
+    id: 'situacao.descricao', // Explicit ID
+    accessorKey: 'situacao.descricao',
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -107,31 +108,26 @@ export const getTicketColumns = (
     filterFn: (row, id, value) => {
       return value.includes(row.original.situacao.descricao)
     },
-    accessorFn: (row) => row.situacao.descricao,
   },
   {
-    accessorKey: 'solicitante.nome', // Access nested property
+    accessorKey: 'solicitante.nome',
     header: 'Solicitante',
     cell: ({ row }) => row.original.solicitante.nome,
-    accessorFn: (row) => row.solicitante.nome,
   },
   {
-    accessorKey: 'responsavel.nome', // Access nested property
+    accessorKey: 'responsavel.nome',
     header: 'Responsável',
     cell: ({ row }) => row.original.responsavel?.nome || 'Não atribuído',
-    accessorFn: (row) => row.responsavel?.nome || 'Não atribuído',
   },
   {
-    accessorKey: 'ambiente.descricao', // Access nested property
+    accessorKey: 'ambiente.descricao',
     header: 'Ambiente',
     cell: ({ row }) => row.original.ambiente.descricao,
-    accessorFn: (row) => row.ambiente.descricao,
   },
   {
-    accessorKey: 'origem.descricao', // Access nested property
+    accessorKey: 'origem.descricao',
     header: 'Origem',
     cell: ({ row }) => row.original.origem.descricao,
-    accessorFn: (row) => row.origem.descricao,
   },
   {
     accessorKey: 'createdAt',
