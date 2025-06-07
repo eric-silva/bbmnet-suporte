@@ -11,13 +11,16 @@ export default function HomePage() {
   const { session } = useSession();
   const router = useRouter();
 
+  // O redirecionamento agora é principalmente tratado em AppProviders
+  // Mas podemos manter uma verificação aqui como uma camada adicional ou para UI específica.
   useEffect(() => {
     if (session.status === 'authenticated') {
-      router.push('/dashboard');
+      // router.push('/dashboard'); // AppProviders já deve lidar com isso
     }
   }, [session.status, router]);
 
   if (session.status === 'loading' || session.status === 'authenticated') {
+    // Mostrar um spinner/carregador mais robusto se MSAL estiver em progresso
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
         <LifeBuoy className="h-16 w-16 text-primary mb-6 animate-pulse" />
@@ -26,6 +29,7 @@ export default function HomePage() {
     );
   }
 
+  // session.status === 'unauthenticated'
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
       <div className="max-w-md w-full text-center bg-card p-8 rounded-xl shadow-2xl">
@@ -38,7 +42,7 @@ export default function HomePage() {
         </p>
         <SignInButton />
         <p className="mt-6 text-xs text-muted-foreground">
-          Acesso restrito a domínios autorizados.
+          Utilize sua conta Microsoft corporativa.
         </p>
       </div>
        <footer className="absolute bottom-4 text-center text-sm text-muted-foreground">

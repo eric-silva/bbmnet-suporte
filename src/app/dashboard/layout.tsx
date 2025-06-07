@@ -5,6 +5,7 @@ import { useSession } from '@/components/auth/AppProviders';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { LifeBuoy } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -14,20 +15,35 @@ export default function DashboardLayout({
   const { session } = useSession();
   const router = useRouter();
 
+  // A lógica de redirecionamento principal está em AppProviders/AuthManager
+  // Este useEffect pode ser simplificado ou servir como uma camada extra.
   useEffect(() => {
     if (session.status === 'unauthenticated') {
-      router.push('/');
+      // router.push('/'); // AppProviders já deve lidar com isso
     }
   }, [session.status, router]);
 
-  if (session.status === 'loading' || session.status === 'unauthenticated') {
+  if (session.status === 'loading') {
     return (
-       <div className="flex h-screen items-center justify-center">
-        <p>Carregando sessão...</p>
+       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
+        <LifeBuoy className="h-16 w-16 text-primary mb-6 animate-pulse" />
+        <p className="text-xl text-foreground">Carregando sessão...</p>
+      </div>
+    );
+  }
+  
+  if (session.status === 'unauthenticated') {
+     // Teoricamente, AppProviders já deveria ter redirecionado.
+     // Mas como uma segurança, podemos mostrar algo ou forçar o redirecionamento.
+    return (
+       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
+        <LifeBuoy className="h-16 w-16 text-primary mb-6" />
+        <p className="text-xl text-foreground">Redirecionando para o login...</p>
       </div>
     );
   }
 
+  // session.status === 'authenticated'
   return (
     <div className="flex min-h-screen flex-col">
       <div className="app-header-print-hide">
@@ -46,5 +62,3 @@ export default function DashboardLayout({
     </div>
   );
 }
-
-    

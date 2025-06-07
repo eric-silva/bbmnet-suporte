@@ -12,17 +12,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, UserCircle } from 'lucide-react';
+import { LogOut, UserCircle, Loader2 } from 'lucide-react';
 import { useSession } from './AppProviders';
+import { useState } from 'react';
 
 export function UserNav() {
   const { session, signOut } = useSession();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    await signOut();
+    // O MSAL cuidará do redirecionamento.
+    // Não é necessário definir setIsSigningOut(false) aqui.
+  };
 
   if (session.status !== 'authenticated' || !session.user) {
+    // Poderia retornar um Skeleton aqui se session.status === 'loading'
     return null;
   }
 
-  const { name, email, image } = session.user;
+  const { name, email } = session.user;
+  // MSAL geralmente não fornece uma URL de imagem diretamente no objeto da conta.
+  // Se você precisar de uma imagem, precisaria buscá-la via Microsoft Graph API usando um token de acesso.
+  // Por enquanto, vamos usar um fallback.
+  const image = null; // Substitua se você implementar o carregamento de imagem do Graph
   const fallbackName = name ? name.charAt(0).toUpperCase() : (email ? email.charAt(0).toUpperCase() : <UserCircle />);
 
   return (
@@ -46,8 +60,12 @@ export function UserNav() {
         <DropdownMenuGroup>
           {/* Adicionar outros itens como Perfil, Configurações se necessário */}
         </DropdownMenuGroup>
-        <DropdownMenuItem onClick={() => signOut()}>
-          <LogOut className="mr-2 h-4 w-4" />
+        <DropdownMenuItem onClick={handleSignOut} disabled={isSigningOut}>
+          {isSigningOut ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <LogOut className="mr-2 h-4 w-4" />
+          )}
           <span>Sair</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
