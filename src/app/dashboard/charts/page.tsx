@@ -93,6 +93,7 @@ const chartableFields: ChartableField[] = [
   { value: 'solicitanteName', label: 'Solicitante', titlePrefix: 'Tickets por', description: 'Top 5 solicitantes com mais tickets.', maxCategories: 6 }, // 5 + Outros
 ];
 
+const CLEAR_SELECTION_VALUE = "clear-selection";
 
 export default function ChartsPage() {
   const [allTickets, setAllTickets] = useState<Ticket[]>([]);
@@ -135,8 +136,8 @@ export default function ChartsPage() {
     }
   }, [selectedFieldInfo, allTickets]);
 
-  const handleFieldChange = (selectedValue: ChartableFieldKey | "") => {
-    if (selectedValue === "") {
+  const handleFieldChange = (selectedValue: string) => {
+    if (selectedValue === CLEAR_SELECTION_VALUE) {
         setSelectedFieldInfo(null);
         return;
     }
@@ -161,14 +162,17 @@ export default function ChartsPage() {
             <CardDescription>Escolha qual aspecto dos tickets você gostaria de visualizar em formato de gráfico.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Select onValueChange={(value) => handleFieldChange(value as ChartableFieldKey | "")} value={selectedFieldInfo?.value || ""}>
+            <Select 
+              onValueChange={handleFieldChange} 
+              value={selectedFieldInfo?.value || CLEAR_SELECTION_VALUE}
+            >
               <SelectTrigger className="w-full sm:w-[280px] h-10">
                 <SelectValue placeholder="Selecione um tipo de gráfico..." />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>Tipos de Gráfico</SelectLabel>
-                  <SelectItem value="">Nenhum (Limpar)</SelectItem>
+                  <SelectItem value={CLEAR_SELECTION_VALUE}>Nenhum (Limpar)</SelectItem>
                   {chartableFields.map(field => (
                     <SelectItem key={field.value} value={field.value}>
                       {field.titlePrefix} {field.label}
