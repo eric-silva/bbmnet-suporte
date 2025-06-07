@@ -28,7 +28,8 @@ export function MegaMenu({ isOpen, onOpenChange }: MegaMenuProps) {
   const { getAuthHeaders } = useSession();
 
   useEffect(() => {
-    if (isOpen && menuItems.length === 0 && !isLoading && !error) { // Fetch only if open and not already fetched/loading/errored
+    console.log('menu ' + isOpen + ' ' + menuItems.length + ' ' + isLoading + ' ' + error);
+    if (isOpen && menuItems.length === 0 && isLoading && !error) { // Fetch only if open and not already fetched/loading/errored
       fetchMenuItems();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

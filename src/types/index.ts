@@ -79,6 +79,7 @@ export interface MenuItem {
   nomeIcone: string;
   menuPrincipalId: string | null;
   isAtivo: boolean;
+  path: string;
   createdAt: Date;
   updatedAt: Date;
 }

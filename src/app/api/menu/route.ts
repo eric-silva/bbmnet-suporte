@@ -23,6 +23,7 @@ export async function GET() {
         nomeIcone: item.nomeIcone,
         menuPrincipalId: item.menuPrincipalId,
         isAtivo: item.isAtivo,
+        path: (item as any).path ?? '', // Use empty string or handle as needed if 'path' is missing
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
         subMenus: [] // Initialize subMenus array

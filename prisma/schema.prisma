@@ -2,7 +2,7 @@
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  // directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -93,12 +93,14 @@ model Menu {
   nomeIcone       String  // e.g., "Home", "Users", "Settings"
   menuPrincipalId String?
   isAtivo         Boolean @default(true)
+  path            String
 
   menuPrincipal   Menu?   @relation("SubMenuItems", fields: [menuPrincipalId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   subMenus        Menu[]  @relation("SubMenuItems")
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
 
   @@index([menuPrincipalId])
 }

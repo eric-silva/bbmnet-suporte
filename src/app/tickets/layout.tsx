@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { LifeBuoy } from 'lucide-react';
 
-export default function DashboardLayout({
+export default function TicketsLayout({
   children,
 }: {
   children: React.ReactNode;

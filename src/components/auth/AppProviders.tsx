@@ -52,7 +52,7 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
     if (session.status === 'unauthenticated' && pathname !== '/' && !pathname.startsWith('/api/auth')) { // Allow access to auth API routes
       router.push('/');
     } else if (session.status === 'authenticated' && pathname === '/') {
-      router.push('/dashboard');
+      router.push('/tickets');
     }
   }, [session.status, pathname, router]);
 

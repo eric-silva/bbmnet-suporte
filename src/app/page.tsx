@@ -37,7 +37,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (session.status === 'authenticated') {
-      router.push('/dashboard');
+      router.push('/tickets');
     }
   }, [session.status, router]);
 

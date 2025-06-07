@@ -34,7 +34,7 @@ export default function Error({
         </Button>
          <Button
           variant="link"
-          onClick={() => window.location.href = '/dashboard'}
+          onClick={() => window.location.href = '/tickets'}
           className="mt-2"
         >
           Ir para o Painel

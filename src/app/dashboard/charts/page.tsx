@@ -233,12 +233,12 @@ export default function ChartsPage() {
     <ScrollArea className="h-full">
       <div className="container mx-auto py-10 px-4 md:px-6">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 charts-page-controls-print-hide">
-          <h1 className="text-3xl font-bold font-headline text-foreground text-center sm:text-left">Dashboard de Gráficos</h1>
+          <h1 className="text-3xl font-bold font-headline text-foreground text-center sm:text-left">Tickets de Gráficos</h1>
           <div className="flex items-center gap-2">
-            <Link href="/dashboard" passHref>
+            <Link href="/tickets" passHref>
               <Button variant="outline" className="font-headline">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar ao Dashboard
+                Voltar ao Tickets
               </Button>
             </Link>
             <SaveToPdfButton isChartReady={isChartReady} />
