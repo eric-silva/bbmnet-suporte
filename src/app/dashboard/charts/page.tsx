@@ -1,11 +1,16 @@
 
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getTickets } from '@/app/actions/tickets';
 import { TicketCountChart, type ChartDataItem } from '@/components/charts/TicketCountChart';
 import { SaveToPdfButton } from '@/components/charts/SaveToPdfButton';
 import type { Ticket } from '@/types';
 import { type ChartConfig } from "@/components/ui/chart";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))", 
@@ -15,15 +20,15 @@ const CHART_COLORS = [
   "hsl(var(--chart-5))",
   "hsl(var(--primary))",
   "hsl(var(--accent))",
-  "hsl(210 40% 96.1%)", // Light Gray as an example for more colors
-  "hsl(142.1 70.6% 45.3%)", // Green
-  "hsl(346.8 77.2% 49.8%)", // Pink
+  "hsl(210 40% 96.1%)",
+  "hsl(142.1 70.6% 45.3%)",
+  "hsl(346.8 77.2% 49.8%)",
 ];
 
 function aggregateTickets<K extends keyof Ticket>(
   tickets: Ticket[], 
   key: K,
-  maxCategories: number = 10 // Limit categories to prevent overly cluttered charts
+  maxCategories: number = 10
 ): ChartDataItem[] {
   const counts: Record<string, number> = {};
   tickets.forEach(ticket => {
@@ -36,7 +41,7 @@ function aggregateTickets<K extends keyof Ticket>(
 
   let othersValue = 0;
   if (sortedEntries.length > maxCategories) {
-    othersValue = sortedEntries.slice(maxCategories -1).reduce((acc, [, value]) => acc + value, 0);
+    othersValue = sortedEntries.slice(maxCategories - 1).reduce((acc, [, value]) => acc + value, 0);
     sortedEntries = sortedEntries.slice(0, maxCategories - 1);
   }
 
@@ -68,31 +73,79 @@ function generateChartConfig(data: ChartDataItem[]): ChartConfig {
     return config;
 }
 
+type ChartableFieldKey = 'priority' | 'status' | 'type' | 'ambiente' | 'origem' | 'responsavelEmail' | 'solicitanteName';
 
-export default async function ChartsPage() {
-  const tickets = await getTickets();
+interface ChartableField {
+  value: ChartableFieldKey;
+  label: string; // Used for the Select item display
+  titlePrefix: string; // Used for the chart title, e.g., "Tickets por"
+  description: string;
+  maxCategories?: number;
+}
 
-  const ticketsByPriority = aggregateTickets(tickets, 'priority');
-  const priorityChartConfig = generateChartConfig(ticketsByPriority);
+const chartableFields: ChartableField[] = [
+  { value: 'priority', label: 'Prioridade', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por nível de prioridade.' },
+  { value: 'status', label: 'Situação', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por status atual.' },
+  { value: 'type', label: 'Tipo', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por tipo de solicitação.' },
+  { value: 'ambiente', label: 'Ambiente', titlePrefix: 'Tickets por', description: 'Distribuição de tickets entre ambientes.'},
+  { value: 'origem', label: 'Origem', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por origem do problema.'},
+  { value: 'responsavelEmail', label: 'Responsável', titlePrefix: 'Tickets por', description: 'Top 5 responsáveis com mais tickets.', maxCategories: 6 }, // 5 + Outros
+  { value: 'solicitanteName', label: 'Solicitante', titlePrefix: 'Tickets por', description: 'Top 5 solicitantes com mais tickets.', maxCategories: 6 }, // 5 + Outros
+];
 
-  const ticketsByStatus = aggregateTickets(tickets, 'status');
-  const statusChartConfig = generateChartConfig(ticketsByStatus);
+
+export default function ChartsPage() {
+  const [allTickets, setAllTickets] = useState<Ticket[]>([]);
+  const [selectedFieldInfo, setSelectedFieldInfo] = useState<ChartableField | null>(null);
+  const [chartData, setChartData] = useState<ChartDataItem[] | null>(null);
+  const [chartConfig, setChartConfig] = useState<ChartConfig | null>(null);
   
-  const ticketsByType = aggregateTickets(tickets, 'type');
-  const typeChartConfig = generateChartConfig(ticketsByType);
+  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
+  const [isProcessingChart, setIsProcessingChart] = useState(false);
 
-  const ticketsByEnvironment = aggregateTickets(tickets, 'ambiente');
-  const environmentChartConfig = generateChartConfig(ticketsByEnvironment);
+  useEffect(() => {
+    async function loadTickets() {
+      setIsLoadingTickets(true);
+      try {
+        const fetchedTickets = await getTickets();
+        setAllTickets(fetchedTickets);
+      } catch (error) {
+        console.error("Falha ao buscar tickets:", error);
+        // Consider adding a toast notification here
+      } finally {
+        setIsLoadingTickets(false);
+      }
+    }
+    loadTickets();
+  }, []);
 
-  const ticketsByOrigin = aggregateTickets(tickets, 'origem');
-  const originChartConfig = generateChartConfig(ticketsByOrigin);
-  
-  const ticketsByAssignee = aggregateTickets(tickets, 'responsavelEmail', 5); // Show top 5 assignees + Others
-  const assigneeChartConfig = generateChartConfig(ticketsByAssignee);
+  useEffect(() => {
+    if (selectedFieldInfo && allTickets.length > 0) {
+      setIsProcessingChart(true);
+      const { value, maxCategories } = selectedFieldInfo;
+      
+      // Ensure 'value' is a valid key for Ticket before calling aggregateTickets
+      const data = aggregateTickets(allTickets, value as keyof Ticket, maxCategories);
+      setChartData(data);
+      setChartConfig(generateChartConfig(data));
+      setIsProcessingChart(false);
+    } else {
+      setChartData(null);
+      setChartConfig(null);
+    }
+  }, [selectedFieldInfo, allTickets]);
 
-  const ticketsByRequester = aggregateTickets(tickets, 'solicitanteName', 5); // Show top 5 requesters + Others
-  const requesterChartConfig = generateChartConfig(ticketsByRequester);
+  const handleFieldChange = (selectedValue: ChartableFieldKey | "") => {
+    if (selectedValue === "") {
+        setSelectedFieldInfo(null);
+        return;
+    }
+    const field = chartableFields.find(f => f.value === selectedValue);
+    setSelectedFieldInfo(field || null);
+  };
 
+  const currentChartTitle = selectedFieldInfo ? `${selectedFieldInfo.titlePrefix} ${selectedFieldInfo.label}` : 'Selecione um Gráfico';
+  const currentChartDescription = selectedFieldInfo ? selectedFieldInfo.description : 'Escolha uma categoria para visualizar a distribuição dos tickets.';
 
   return (
     <ScrollArea className="h-full">
@@ -102,18 +155,59 @@ export default async function ChartsPage() {
           <SaveToPdfButton />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          <TicketCountChart title="Tickets por Prioridade" data={ticketsByPriority} chartConfig={priorityChartConfig} description="Distribuição de tickets por nível de prioridade." />
-          <TicketCountChart title="Tickets por Situação" data={ticketsByStatus} chartConfig={statusChartConfig} description="Distribuição de tickets por status atual." />
-          <TicketCountChart title="Tickets por Tipo" data={ticketsByType} chartConfig={typeChartConfig} description="Distribuição de tickets por tipo de solicitação." />
-          <TicketCountChart title="Tickets por Ambiente" data={ticketsByEnvironment} chartConfig={environmentChartConfig} description="Distribuição de tickets entre ambientes."/>
-          <TicketCountChart title="Tickets por Origem" data={ticketsByOrigin} chartConfig={originChartConfig} description="Distribuição de tickets por origem do problema."/>
-          <TicketCountChart title="Tickets por Responsável" data={ticketsByAssignee} chartConfig={assigneeChartConfig} description="Top 5 responsáveis com mais tickets."/>
-          <TicketCountChart title="Tickets por Solicitante" data={ticketsByRequester} chartConfig={requesterChartConfig} description="Top 5 solicitantes com mais tickets."/>
-        </div>
+        <Card className="mb-8 shadow-lg">
+          <CardHeader>
+            <CardTitle>Selecionar Visualização</CardTitle>
+            <CardDescription>Escolha qual aspecto dos tickets você gostaria de visualizar em formato de gráfico.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select onValueChange={(value) => handleFieldChange(value as ChartableFieldKey | "")} value={selectedFieldInfo?.value || ""}>
+              <SelectTrigger className="w-full sm:w-[280px] h-10">
+                <SelectValue placeholder="Selecione um tipo de gráfico..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Tipos de Gráfico</SelectLabel>
+                  <SelectItem value="">Nenhum (Limpar)</SelectItem>
+                  {chartableFields.map(field => (
+                    <SelectItem key={field.value} value={field.value}>
+                      {field.titlePrefix} {field.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        {isLoadingTickets ? (
+          <div className="flex justify-center items-center h-[300px]">
+            <Skeleton className="h-12 w-1/2" />
+            <p className="ml-4 text-muted-foreground">Carregando dados dos tickets...</p>
+          </div>
+        ) : isProcessingChart ? (
+          <div className="flex justify-center items-center h-[450px]">
+             <Skeleton className="w-full h-[400px] rounded-lg" />
+          </div>
+        ) : selectedFieldInfo && chartData && chartConfig ? (
+          <TicketCountChart 
+            title={currentChartTitle} 
+            data={chartData} 
+            chartConfig={chartConfig} 
+            description={currentChartDescription} 
+          />
+        ) : (
+          <Card className="h-[450px] flex flex-col items-center justify-center text-center shadow-lg">
+            <CardHeader>
+              <CardTitle>Nenhum Gráfico Selecionado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Por favor, selecione um tipo de gráfico no menu acima para visualizar os dados.</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
       <ScrollBar orientation="vertical" />
     </ScrollArea>
   );
 }
-

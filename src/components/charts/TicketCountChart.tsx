@@ -41,17 +41,17 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
 
   if (!data || data.length === 0) {
     return (
-       <Card className="flex flex-col h-full">
+       <Card className="flex flex-col h-full shadow-md">
         <CardHeader className="items-center pb-0">
           <CardTitle>{title}</CardTitle>
           {description && <CardDescription>{description}</CardDescription>}
         </CardHeader>
         <CardContent className="flex-1 flex items-center justify-center pb-0">
-          <p className="text-muted-foreground">Não há dados para exibir.</p>
+          <p className="text-muted-foreground">Não há dados para exibir para esta seleção.</p>
         </CardContent>
         <CardFooter className="flex-col gap-2 text-sm">
            <div className="leading-none text-muted-foreground">
-            Nenhum ticket encontrado para esta categoria.
+            Nenhum ticket encontrado.
           </div>
         </CardFooter>
       </Card>
@@ -59,15 +59,15 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
   }
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col h-full shadow-md">
       <CardHeader className="items-center pb-0">
         <CardTitle>{title}</CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
+        {description && <CardDescription className="text-center max-w-md mx-auto">{description}</CardDescription>}
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square max-h-[250px]" // Reduced max-h for better fit
+          className="mx-auto aspect-square max-h-[350px] md:max-h-[450px]"
         >
           <RechartsPieChart>
             <ChartTooltip
@@ -78,10 +78,28 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
               data={data}
               dataKey="value"
               nameKey="name"
-              innerRadius={50} // Adjusted innerRadius
-              outerRadius={80} // Adjusted outerRadius
+              innerRadius={60} 
+              outerRadius={120}
               strokeWidth={2}
-              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+              labelLine={false}
+              label={({ name, percent, x, y, textAnchor, payload }) => {
+                const RADIAN = Math.PI / 180;
+                const radius = 120 + 30; // Outer radius + label offset
+                const lx = x + (radius * Math.cos(-payload.midAngle * RADIAN));
+                const ly = y + (radius * Math.sin(-payload.midAngle * RADIAN));
+                return (
+                  <text
+                    x={lx}
+                    y={ly}
+                    fill="hsl(var(--foreground))"
+                    textAnchor={textAnchor}
+                    dominantBaseline="central"
+                    className="text-xs"
+                  >
+                    {`${name} (${(percent * 100).toFixed(0)}%)`}
+                  </text>
+                );
+              }}
             >
               {data.map((entry) => (
                  <Cell key={`cell-${entry.name}`} fill={entry.fill} />
@@ -91,15 +109,16 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
           </RechartsPieChart>
         </ChartContainer>
       </CardContent>
-      <CardFooter className="flex-col gap-2 text-sm pt-4"> {/* Added pt-4 */}
+      <CardFooter className="flex-col gap-2 text-sm pt-4">
         <div className="flex items-center gap-2 font-medium leading-none">
           Total: {totalValue} tickets
           {totalValue > 0 && <TrendingUp className="h-4 w-4" />}
         </div>
         <div className="leading-none text-muted-foreground">
-          Distribuição de tickets por {title.split("por ")[1]?.toLowerCase() || 'categoria'}
+          Exibindo distribuição de tickets.
         </div>
       </CardFooter>
     </Card>
   );
 }
+
