@@ -1,7 +1,8 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getTickets } from '@/app/actions/tickets';
 import { TicketCountChart, type ChartDataItem } from '@/components/charts/TicketCountChart';
@@ -11,6 +12,8 @@ import { type ChartConfig } from "@/components/ui/chart";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))", 
@@ -103,6 +106,7 @@ export default function ChartsPage() {
   
   const [isLoadingTickets, setIsLoadingTickets] = useState(true);
   const [isProcessingChart, setIsProcessingChart] = useState(false);
+  const chartAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function loadTickets() {
@@ -125,7 +129,6 @@ export default function ChartsPage() {
       setIsProcessingChart(true);
       const { value, maxCategories } = selectedFieldInfo;
       
-      // Ensure 'value' is a valid key for Ticket before calling aggregateTickets
       const data = aggregateTickets(allTickets, value as keyof Ticket, maxCategories);
       setChartData(data);
       setChartConfig(generateChartConfig(data));
@@ -151,12 +154,20 @@ export default function ChartsPage() {
   return (
     <ScrollArea className="h-full">
       <div className="container mx-auto py-10 px-4 md:px-6">
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 charts-page-controls-print-hide">
           <h1 className="text-3xl font-bold font-headline text-foreground text-center sm:text-left">Dashboard de Gráficos</h1>
-          <SaveToPdfButton />
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard" passHref>
+              <Button variant="outline" className="font-headline">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar ao Dashboard
+              </Button>
+            </Link>
+            <SaveToPdfButton />
+          </div>
         </div>
 
-        <Card className="mb-8 shadow-lg">
+        <Card className="mb-8 shadow-lg charts-page-controls-print-hide">
           <CardHeader>
             <CardTitle>Selecionar Visualização</CardTitle>
             <CardDescription>Escolha qual aspecto dos tickets você gostaria de visualizar em formato de gráfico.</CardDescription>
@@ -184,34 +195,38 @@ export default function ChartsPage() {
           </CardContent>
         </Card>
 
-        {isLoadingTickets ? (
-          <div className="flex justify-center items-center h-[300px]">
-            <Skeleton className="h-12 w-1/2" />
-            <p className="ml-4 text-muted-foreground">Carregando dados dos tickets...</p>
-          </div>
-        ) : isProcessingChart ? (
-          <div className="flex justify-center items-center h-[450px]">
-             <Skeleton className="w-full h-[400px] rounded-lg" />
-          </div>
-        ) : selectedFieldInfo && chartData && chartConfig ? (
-          <TicketCountChart 
-            title={currentChartTitle} 
-            data={chartData} 
-            chartConfig={chartConfig} 
-            description={currentChartDescription} 
-          />
-        ) : (
-          <Card className="h-[450px] flex flex-col items-center justify-center text-center shadow-lg">
-            <CardHeader>
-              <CardTitle>Nenhum Gráfico Selecionado</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Por favor, selecione um tipo de gráfico no menu acima para visualizar os dados.</p>
-            </CardContent>
-          </Card>
-        )}
+        <div id="chart-to-print-area" ref={chartAreaRef}>
+          {isLoadingTickets ? (
+            <div className="flex justify-center items-center h-[300px] charts-page-controls-print-hide">
+              <Skeleton className="h-12 w-1/2" />
+              <p className="ml-4 text-muted-foreground">Carregando dados dos tickets...</p>
+            </div>
+          ) : isProcessingChart ? (
+            <div className="flex justify-center items-center h-[450px] charts-page-controls-print-hide">
+               <Skeleton className="w-full h-[400px] rounded-lg" />
+            </div>
+          ) : selectedFieldInfo && chartData && chartConfig ? (
+            <TicketCountChart 
+              title={currentChartTitle} 
+              data={chartData} 
+              chartConfig={chartConfig} 
+              description={currentChartDescription} 
+            />
+          ) : (
+            <Card className="h-[450px] flex flex-col items-center justify-center text-center shadow-lg">
+              <CardHeader>
+                <CardTitle>Nenhum Gráfico Selecionado</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Por favor, selecione um tipo de gráfico no menu acima para visualizar os dados.</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
       <ScrollBar orientation="vertical" />
     </ScrollArea>
   );
 }
+
+    

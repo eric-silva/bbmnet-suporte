@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -96,3 +97,53 @@ body {
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+@media print {
+  body {
+    -webkit-print-color-adjust: exact !important; /* Chrome, Safari, Edge */
+    print-color-adjust: exact !important; /* Firefox */
+    background-color: white !important; /* Ensure background is white for print */
+  }
+  .app-header-print-hide,
+  .app-footer-print-hide,
+  .charts-page-controls-print-hide,
+  .no-print { /* General class to hide elements */
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Ensure the chart area itself takes up the page */
+  #chart-to-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    visibility: visible !important;
+    padding: 20px; /* Add some padding for the print layout */
+    background-color: white !important;
+  }
+  
+  /* Make sure elements inside the chart area are visible */
+  #chart-to-print-area * {
+    visibility: visible !important;
+  }
+
+  /* Resetting some global styles for print if needed */
+  body, html {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Specifically target the recharts container for print size adjustments */
+  #chart-to-print-area .recharts-responsive-container {
+    width: 100% !important;
+    height: 90vh !important; /* Adjust height as needed for print */
+  }
+  #chart-to-print-area svg.recharts-surface {
+      width: 100% !important;
+      height: 100% !important;
+  }
+}
+
+    

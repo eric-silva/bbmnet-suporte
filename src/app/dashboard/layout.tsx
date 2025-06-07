@@ -4,6 +4,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { useSession } from '@/components/auth/AppProviders';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { cn } from '@/lib/utils';
 
 export default function DashboardLayout({
   children,
@@ -29,11 +30,13 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <AppHeader />
+      <div className="app-header-print-hide">
+        <AppHeader />
+      </div>
       <main className="flex-1">
         {children}
       </main>
-      <footer className="py-6 md:px-8 md:py-0 bg-background border-t">
+      <footer className={cn("py-6 md:px-8 md:py-0 bg-background border-t", "app-footer-print-hide")}>
         <div className="container flex flex-col items-center justify-between gap-4 md:h-20 md:flex-row">
           <p className="text-balance text-center text-sm leading-loose text-muted-foreground md:text-left">
             Construído por Sua Equipe. Desenvolvido com Next.js e ShadCN UI.
@@ -43,3 +46,5 @@ export default function DashboardLayout({
     </div>
   );
 }
+
+    
