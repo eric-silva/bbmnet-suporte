@@ -62,7 +62,7 @@ export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
             width: 100%;
             margin: 0;
             padding: 0;
-            overflow: hidden; 
+            /* overflow: hidden; REMOVED to prevent clipping */
             box-sizing: border-box;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -79,10 +79,10 @@ export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
           #chart-to-print-area {
             flex-grow: 1; 
             width: 100%; /* Div que contém o card do gráfico */
-            overflow: hidden; 
+            /* overflow: hidden; REMOVED to prevent clipping */
             display: flex;
-            align-items: stretch; /* Alterado para stretch para o card preencher */
-            justify-content: stretch; /* Alterado para stretch */
+            align-items: stretch; 
+            justify-content: stretch; 
             box-sizing: border-box;
           }
 
@@ -126,7 +126,7 @@ export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            overflow: hidden !important;
+            overflow: hidden !important; /* Keep overflow hidden for chart content itself */
             box-sizing: border-box !important;
             background-color: white !important;
           }
@@ -179,14 +179,12 @@ export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
       
       printPreview.document.write('<div id="chart-to-print-area-wrapper">');
       if (chartArea) {
-        // Criamos um div limpo para o card, em vez de copiar o innerHTML diretamente de um div que pode ter outros estilos/filhos
-        const chartCardClone = chartArea.querySelector('div[class*="card"]'); // Tentamos pegar o card original
+        const chartCardClone = chartArea.querySelector('div[class*="card"]'); 
         if(chartCardClone) {
             printPreview.document.write('<div id="chart-to-print-area">');
-            printPreview.document.write(chartCardClone.outerHTML); // Copiamos o HTML do card
+            printPreview.document.write(chartCardClone.outerHTML); 
             printPreview.document.write('</div>');
         } else {
-            // Fallback se não encontrar o card específico, copia o chartArea como antes
             printPreview.document.write('<div id="chart-to-print-area">');
             printPreview.document.write(chartArea.innerHTML);
             printPreview.document.write('</div>');
@@ -196,7 +194,7 @@ export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
         printPreview.document.write('<p>Erro: Área do gráfico não encontrada.</p>');
       }
       printPreview.document.write(`<div class="print-footer-info">${footerText}</div>`);
-      printPreview.document.write('</div>'); // Close chart-to-print-area-wrapper
+      printPreview.document.write('</div>'); 
       
       printPreview.document.write('</body></html>');
       printPreview.document.close(); 
@@ -236,3 +234,4 @@ export function SaveToPdfButton({ isChartReady }: SaveToPdfButtonProps) {
     </Button>
   );
 }
+
