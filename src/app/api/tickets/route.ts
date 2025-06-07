@@ -27,8 +27,24 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(tickets);
   } catch (error) {
-    console.error('Failed to fetch tickets:', error);
-    return NextResponse.json({ message: 'Failed to fetch tickets' }, { status: 500 });
+    console.error('Failed to fetch tickets:', error); // Server-side log
+    
+    let responseMessage = 'An unexpected error occurred while fetching tickets.';
+    let errorDetails: any = null;
+
+    if (error instanceof Error) {
+      responseMessage = `Failed to fetch tickets: ${error.name}`;
+      if (process.env.NODE_ENV !== 'production') {
+        responseMessage = `Failed to fetch tickets: ${error.message}`;
+        errorDetails = { name: error.name, message: error.message, stack: error.stack };
+      }
+    }
+    
+    const clientMessage = (process.env.NODE_ENV === 'production') 
+                          ? 'Failed to fetch tickets. Please check server logs for details.' 
+                          : responseMessage;
+
+    return NextResponse.json({ message: clientMessage, ...(errorDetails && {details: errorDetails}) }, { status: 500 });
   }
 }
 
@@ -38,8 +54,6 @@ export async function POST(request: NextRequest) {
     if (!authenticatedUserEmail) {
         return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
     }
-    // In a real app, you'd fetch the user's name from your user database/service
-    // For this mock, we'll use a constant name if the email matches the mock user.
     const solicitanteName = authenticatedUserEmail === MOCK_CUSTOM_USER_SESSION_DATA.email 
                             ? MOCK_CUSTOM_USER_SESSION_DATA.name 
                             : "Usuário";
@@ -62,19 +76,31 @@ export async function POST(request: NextRequest) {
         ambiente: data.ambiente as Environment,
         origem: data.origem as Origin,
         solicitanteEmail: authenticatedUserEmail,
-        solicitanteName: solicitanteName, // You might want to get this from a User table based on email
+        solicitanteName: solicitanteName,
         responsavelEmail: data.responsavelEmail === '' ? null : data.responsavelEmail,
-        status: 'Para fazer' as TicketStatus, // Default status
-        // anexo and resolutionDetails are optional and already in data
+        status: 'Para fazer' as TicketStatus,
       },
     });
 
-    // TODO: Implement Discord notification here
-    // e.g., sendDiscordNotification(newTicket);
-
     return NextResponse.json(newTicket, { status: 201 });
   } catch (error) {
-    console.error('Failed to create ticket:', error);
-    return NextResponse.json({ message: 'Failed to create ticket' }, { status: 500 });
+    console.error('Failed to create ticket:', error); // Server-side log
+    
+    let responseMessage = 'An unexpected error occurred while creating the ticket.';
+    let errorDetails: any = null;
+
+    if (error instanceof Error) {
+      responseMessage = `Failed to create ticket: ${error.name}`;
+      if (process.env.NODE_ENV !== 'production') {
+        responseMessage = `Failed to create ticket: ${error.message}`;
+        errorDetails = { name: error.name, message: error.message, stack: error.stack };
+      }
+    }
+    
+    const clientMessage = (process.env.NODE_ENV === 'production') 
+                          ? 'Failed to create ticket. Please check server logs for details.' 
+                          : responseMessage;
+                          
+    return NextResponse.json({ message: clientMessage, ...(errorDetails && {details: errorDetails}) }, { status: 500 });
   }
 }

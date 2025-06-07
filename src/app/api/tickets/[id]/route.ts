@@ -10,7 +10,7 @@ const UpdateTicketSchema = z.object({
   priority: z.enum(priorities as [string, ...string[]]),
   type: z.enum(ticketTypes as [string, ...string[]]),
   responsavelEmail: z.string().email({ message: "E-mail inválido." }).nullable().or(z.literal('')),
-  status: z.enum(ticketStatuses as [string, ...string[]]), // Status is required for update
+  status: z.enum(ticketStatuses as [string, ...string[]]), 
   resolutionDetails: z.string().optional(),
   evidencias: z.string().min(1, 'O campo Evidências é obrigatório.'),
   anexos: z.string().optional(),
@@ -32,8 +32,24 @@ export async function GET(
     }
     return NextResponse.json(ticket);
   } catch (error) {
-    console.error(`Failed to fetch ticket ${params.id}:`, error);
-    return NextResponse.json({ message: 'Failed to fetch ticket' }, { status: 500 });
+    console.error(`Failed to fetch ticket ${params.id}:`, error); // Server-side log
+    
+    let responseMessage = `An unexpected error occurred while fetching ticket ${params.id}.`;
+    let errorDetails: any = null;
+
+    if (error instanceof Error) {
+      responseMessage = `Failed to fetch ticket ${params.id}: ${error.name}`;
+      if (process.env.NODE_ENV !== 'production') {
+        responseMessage = `Failed to fetch ticket ${params.id}: ${error.message}`;
+        errorDetails = { name: error.name, message: error.message, stack: error.stack };
+      }
+    }
+    
+    const clientMessage = (process.env.NODE_ENV === 'production') 
+                          ? `Failed to fetch ticket ${params.id}. Please check server logs for details.` 
+                          : responseMessage;
+
+    return NextResponse.json({ message: clientMessage, ...(errorDetails && {details: errorDetails}) }, { status: 500 });
   }
 }
 
@@ -83,11 +99,7 @@ export async function PUT(
       updatedAt: now,
       inicioAtendimento,
       terminoAtendimento,
-      // anexos and resolutionDetails are already in data or will be undefined if not provided
     };
-
-    // Prisma handles undefined optional fields correctly (doesn't update them)
-    // So no need to delete them from updatedTicketData
 
     const updatedTicket = await prisma.ticket.update({
       where: { id: params.id },
@@ -96,8 +108,23 @@ export async function PUT(
 
     return NextResponse.json(updatedTicket);
   } catch (error) {
-    console.error(`Failed to update ticket ${params.id}:`, error);
-    // Check for specific Prisma errors if needed, e.g., P2025 for record not found during update
-    return NextResponse.json({ message: 'Failed to update ticket' }, { status: 500 });
+    console.error(`Failed to update ticket ${params.id}:`, error); // Server-side log
+    
+    let responseMessage = `An unexpected error occurred while updating ticket ${params.id}.`;
+    let errorDetails: any = null;
+
+    if (error instanceof Error) {
+      responseMessage = `Failed to update ticket ${params.id}: ${error.name}`;
+      if (process.env.NODE_ENV !== 'production') {
+        responseMessage = `Failed to update ticket ${params.id}: ${error.message}`;
+        errorDetails = { name: error.name, message: error.message, stack: error.stack };
+      }
+    }
+    
+    const clientMessage = (process.env.NODE_ENV === 'production') 
+                          ? `Failed to update ticket ${params.id}. Please check server logs for details.` 
+                          : responseMessage;
+
+    return NextResponse.json({ message: clientMessage, ...(errorDetails && {details: errorDetails}) }, { status: 500 });
   }
 }
