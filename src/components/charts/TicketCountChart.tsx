@@ -59,9 +59,9 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
     )
   }
 
-  const pieOuterRadius = 100;
-  const pieInnerRadius = 50;
-  const labelPositionOffset = 20;
+  const pieOuterRadius = 80;
+  const pieInnerRadius = 40;
+  const labelPositionOffset = 15;
 
   return (
     <Card className="flex flex-col h-full shadow-md">
@@ -85,30 +85,28 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
               nameKey="name"
               innerRadius={pieInnerRadius}
               outerRadius={pieOuterRadius}
+              cx="50%" // Explicitly center the pie
+              cy="50%" // Explicitly center the pie
               strokeWidth={2}
               labelLine={false}
               label={({ name, percent, cx, cy, midAngle, outerRadius: sliceOuterRadius, value: sliceValue }) => {
-                // Do not render label for slices with zero value to avoid clutter and potential issues.
                 if (sliceValue === 0) return null;
 
-                // Ensure essential geometric properties are valid numbers.
                 if (typeof cx !== 'number' || isNaN(cx) ||
                     typeof cy !== 'number' || isNaN(cy) ||
                     typeof midAngle !== 'number' || isNaN(midAngle)) {
-                  return null; // Avoid rendering if coordinates or angle are not valid.
+                  return null; 
                 }
 
                 const RADIAN = Math.PI / 180;
-                // Use sliceOuterRadius from props if available (more specific), otherwise the default pieOuterRadius.
                 const currentOuterRadius = typeof sliceOuterRadius === 'number' ? sliceOuterRadius : pieOuterRadius;
                 const positioningRadius = currentOuterRadius + labelPositionOffset;
 
                 const lx = cx + (positioningRadius * Math.cos(-midAngle * RADIAN));
                 const ly = cy + (positioningRadius * Math.sin(-midAngle * RADIAN));
 
-                // Determine textAnchor based on label position relative to pie center for better alignment.
                 let textAnchor = 'middle';
-                if (lx < cx - 1) textAnchor = 'end'; // Using a small threshold for floating point comparisons
+                if (lx < cx - 1) textAnchor = 'end';
                 else if (lx > cx + 1) textAnchor = 'start';
 
                 return (
@@ -145,3 +143,4 @@ export function TicketCountChart({ data, title, description, chartConfig }: Tick
     </Card>
   );
 }
+
