@@ -38,17 +38,17 @@ export const getTicketColumns = (
     enableHiding: false,
   },
   {
-    accessorKey: 'id',
+    accessorKey: 'numeroTicket', // Changed from 'id'
     header: ({ column }) => (
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
       >
-        ID
+        Nº Ticket
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <div className="font-medium">{row.original.id}</div>,
+    cell: ({ row }) => <div className="font-medium">{row.original.numeroTicket}</div>, // Display numeroTicket
   },
   {
     accessorKey: 'problemDescription',
@@ -59,7 +59,7 @@ export const getTicketColumns = (
     },
   },
   {
-    id: 'prioridade.descricao', // Explicit ID
+    id: 'prioridade.descricao', 
     accessorKey: 'prioridade.descricao',
     header: ({ column }) => (
       <Button
@@ -76,7 +76,7 @@ export const getTicketColumns = (
     },
   },
   {
-    id: 'tipo.descricao', // Explicit ID ensured
+    id: 'tipo.descricao', 
     accessorKey: 'tipo.descricao',
     header: ({ column }) => (
        <Button
@@ -93,7 +93,7 @@ export const getTicketColumns = (
     },
   },
   {
-    id: 'situacao.descricao', // Explicit ID
+    id: 'situacao.descricao', 
     accessorKey: 'situacao.descricao',
     header: ({ column }) => (
       <Button

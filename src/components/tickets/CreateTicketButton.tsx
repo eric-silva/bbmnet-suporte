@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogTitle, // Import DialogTitle
+  DialogTitle, 
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden'; // Import VisuallyHidden
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'; 
 import { TicketForm, type TicketFormData } from './TicketForm';
 import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -25,7 +25,7 @@ export function CreateTicketButton({ onTicketCreated }: CreateTicketButtonProps)
   const { toast } = useToast();
   const { getAuthHeaders } = useSession(); 
 
-  const handleSubmit = async (formData: TicketFormData) => { // formData is now TicketFormData
+  const handleSubmit = async (formData: TicketFormData) => { 
     try {
       const response = await fetch('/api/tickets', {
         method: 'POST',
@@ -33,7 +33,7 @@ export function CreateTicketButton({ onTicketCreated }: CreateTicketButtonProps)
           ...getAuthHeaders(), 
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData), // Send TicketFormData directly
+        body: JSON.stringify(formData), 
       });
 
       if (!response.ok) {
@@ -47,7 +47,7 @@ export function CreateTicketButton({ onTicketCreated }: CreateTicketButtonProps)
       const newTicket: Ticket = await response.json();
       toast({
         title: "Ticket Criado",
-        description: `O ticket ${newTicket.id} foi criado com sucesso.`,
+        description: `O ticket ${newTicket.numeroTicket || newTicket.id} foi criado com sucesso.`, // Use numeroTicket
         variant: 'default',
       });
       setOpen(false);

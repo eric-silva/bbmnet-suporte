@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { TicketDataTable } from '@/components/tickets/TicketDataTable';
 import { getTicketColumns } from '@/components/tickets/TicketColumns';
 import { CreateTicketButton } from '@/components/tickets/CreateTicketButton';
-import type { Ticket, TicketFormData } from '@/types'; // TicketFormData might be needed if types are shared more
+import type { Ticket, TicketFormData } from '@/types'; 
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from '@/components/auth/AppProviders';
 import {
@@ -94,7 +94,7 @@ export default function DashboardPage() {
           ...getAuthHeaders(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData), // Send TicketFormData directly
+        body: JSON.stringify(formData), 
       });
 
       if (!response.ok) {
@@ -106,9 +106,19 @@ export default function DashboardPage() {
       setIsEditModalOpen(false);
       setSelectedTicket(null);
       fetchTickets(); 
+      toast({ // Add toast on successful update
+        title: "Ticket Atualizado",
+        description: `O ticket ${updatedTicket.numeroTicket || updatedTicket.id} foi atualizado com sucesso.`,
+        variant: "default",
+      });
       return { success: true, ticket: updatedTicket };
     } catch (error: any) {
       console.error("Falha ao atualizar ticket:", error);
+      toast({ // Add toast on error
+        title: "Erro ao Atualizar Ticket",
+        description: error.message || 'Falha ao conectar com o servidor.',
+        variant: "destructive",
+      });
       return { success: false, error: error.message || 'Falha ao conectar com o servidor.' };
     }
   };

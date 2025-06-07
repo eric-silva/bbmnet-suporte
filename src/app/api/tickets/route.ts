@@ -3,10 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { MOCK_CUSTOM_USER_SESSION_DATA, PERMITTED_ASSIGNEES } from '@/lib/constants';
-// Removed import of *Values from '@/types' as they are no longer used here
 
-// Zod schema for incoming ticket data (uses string descriptions from TicketFormData)
-// Validation of whether these descriptions exist in DB is handled by Prisma lookups below.
 const TicketApiSchema = z.object({
   problemDescription: z.string().min(10, 'A descrição do problema deve ter pelo menos 10 caracteres.'),
   priority: z.string().min(1, "Prioridade é obrigatória."),
@@ -18,6 +15,26 @@ const TicketApiSchema = z.object({
   origem: z.string().min(1, "Origem é obrigatória."),
   // status is handled by default on creation ("Para fazer")
 });
+
+async function getNextTicketNumber(): Promise<string> {
+  const allTickets = await prisma.ticket.findMany({
+    select: { numeroTicket: true },
+    orderBy: { createdAt: 'asc' } // Ensures some order, though we parse all
+  });
+
+  let maxNumericPart = 0;
+  allTickets.forEach(ticket => {
+    if (ticket.numeroTicket && ticket.numeroTicket.startsWith('TCK-')) {
+      const numericStr = ticket.numeroTicket.substring(4);
+      const numericVal = parseInt(numericStr, 10);
+      if (!isNaN(numericVal) && numericVal > maxNumericPart) {
+        maxNumericPart = numericVal;
+      }
+    }
+  });
+  const nextNumericValue = maxNumericPart + 1;
+  return `TCK-${String(nextNumericValue).padStart(3, '0')}`;
+}
 
 
 export async function GET(request: NextRequest) {
@@ -62,10 +79,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
     }
 
-    const solicitanteDetailsFromAuth = MOCK_CUSTOM_USER_SESSION_DATA; // Using mock for now
+    const solicitanteDetailsFromAuth = MOCK_CUSTOM_USER_SESSION_DATA; 
 
 
-    const body = await request.json(); // body should match TicketFormData
+    const body = await request.json(); 
     const parsed = TicketApiSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -73,18 +90,15 @@ export async function POST(request: NextRequest) {
     }
     const data = parsed.data;
 
-    // Find or create Solicitante
     const solicitante = await prisma.usuario.upsert({
       where: { email: authenticatedUserEmail },
       update: { nome: solicitanteDetailsFromAuth.name || authenticatedUserEmail.split('@')[0] },
       create: {
         email: authenticatedUserEmail,
         nome: solicitanteDetailsFromAuth.name || authenticatedUserEmail.split('@')[0],
-        // hashedPassword and fotoUrl are not set here, would be part of user registration
       },
     });
 
-    // Find or create Responsavel if email is provided
     let responsavelConnect = undefined;
     if (data.responsavelEmail && data.responsavelEmail !== '') {
       const responsavelDetails = PERMITTED_ASSIGNEES.find(u => u.email === data.responsavelEmail) ||
@@ -95,18 +109,16 @@ export async function POST(request: NextRequest) {
         create: {
           email: data.responsavelEmail,
           nome: responsavelDetails.name,
-          // hashedPassword and fotoUrl are not set here
         },
       });
       responsavelConnect = { connect: { id: responsavel.id } };
     }
 
-    // Look up related entities by their descriptions
     const prioridadeRecord = await prisma.prioridade.findUnique({ where: { descricao: data.priority } });
     const tipoRecord = await prisma.tipo.findUnique({ where: { descricao: data.type } });
     const ambienteRecord = await prisma.ambiente.findUnique({ where: { descricao: data.ambiente } });
     const origemRecord = await prisma.origem.findUnique({ where: { descricao: data.origem } });
-    const situacaoRecord = await prisma.situacao.findUnique({ where: { descricao: "Para fazer" } }); // Default status
+    const situacaoRecord = await prisma.situacao.findUnique({ where: { descricao: "Para fazer" } }); 
 
     const missingLookups = [
         !prioridadeRecord ? `Prioridade '${data.priority}'` : null,
@@ -120,8 +132,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: `Could not find required lookup values: ${missingLookups.join(', ')}. Please ensure these exist in the database.` }, { status: 400 });
     }
 
+    const numeroTicket = await getNextTicketNumber();
+
     const newTicket = await prisma.ticket.create({
       data: {
+        numeroTicket, // Add the generated ticket number
         problemDescription: data.problemDescription,
         prioridade: { connect: { id: prioridadeRecord!.id } },
         tipo: { connect: { id: tipoRecord!.id } },
@@ -129,7 +144,7 @@ export async function POST(request: NextRequest) {
         origem: { connect: { id: origemRecord!.id } },
         solicitante: { connect: { id: solicitante.id } },
         responsavel: responsavelConnect,
-        situacao: { connect: { id: situacaoRecord!.id } }, // Default status is "Para fazer"
+        situacao: { connect: { id: situacaoRecord!.id } }, 
         evidencias: data.evidencias,
         anexos: data.anexos,
       },

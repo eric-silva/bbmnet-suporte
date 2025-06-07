@@ -17,21 +17,20 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import type { Ticket, Prioridade, Tipo, Situacao, Ambiente, Origem } from '@/types';
+import type { Ticket, Prioridade, Tipo, Situacao, Ambiente, Origem, TicketFormData } from '@/types';
 import { AiAssigneeSuggestion } from './AiAssigneeSuggestion';
 import { useSession } from '@/components/auth/AppProviders';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Usuario } from '@prisma/client';
+import type { Usuario } from '@/types';
 
-// Updated Zod schema - values are string descriptions.
-// Validation if these descriptions exist in DB is handled by the backend.
+
 const ticketFormSchema = z.object({
   problemDescription: z.string().min(10, 'A descrição do problema deve ter pelo menos 10 caracteres.'),
   priority: z.string().min(1, "Selecione uma prioridade."),
   type: z.string().min(1, "Selecione um tipo."),
   responsavelEmail: z.string().email({ message: "E-mail inválido." }).nullable().or(z.literal('')),
-  status: z.string().min(1, "Selecione uma situação.").optional(), // Optional for create, required for edit by form logic
+  status: z.string().min(1, "Selecione uma situação.").optional(), 
   resolutionDetails: z.string().optional().nullable(),
   evidencias: z.string().min(1, 'O campo Evidências é obrigatório. Por favor, descreva ou cole links para as evidências.'),
   anexos: z.string().optional().nullable(),
@@ -39,7 +38,6 @@ const ticketFormSchema = z.object({
   origem: z.string().min(1, "Selecione uma origem."),
 });
 
-export type TicketFormData = z.infer<typeof ticketFormSchema>;
 
 interface TicketFormProps {
   ticket?: Ticket | null;
@@ -121,30 +119,24 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
       setEnvironmentOptions(environmentsData);
       setOriginOptions(originsData);
       
-      // Set default values after fetching if in create mode
       if (formMode === 'create') {
-        // Set default for radio group if options available
         if (environmentsData.length > 0 && !watch('ambiente')) {
           setValue('ambiente', environmentsData.find(e => e.descricao === "Produção")?.descricao || environmentsData[0].descricao);
         }
-         // Set default "Para fazer" for status if available
         if (statusesData.length > 0 && !watch('status')) {
             setValue('status', statusesData.find(s => s.descricao === "Para fazer")?.descricao || statusesData[0].descricao);
         }
-        // Set default "Normal" for priority if available
         if (prioritiesData.length > 0 && !watch('priority')) {
             setValue('priority', prioritiesData.find(p => p.descricao === "Normal")?.descricao || prioritiesData[0].descricao);
         }
-        // Set default "Bug" for type if available
         if (typesData.length > 0 && !watch('type')) {
             setValue('type', typesData.find(t => t.descricao === "Bug")?.descricao || typesData[0].descricao);
         }
-         // Set default "Sala de Negociação" for origem if available
         if (originsData.length > 0 && !watch('origem')) {
           setValue('origem', originsData.find(o => o.descricao === "Sala de Negociação")?.descricao || originsData[0].descricao);
         }
 
-      } else if (ticket) { // For edit mode, set values from the ticket
+      } else if (ticket) { 
          reset({
           problemDescription: ticket.problemDescription,
           priority: ticket.prioridade.descricao,
@@ -171,15 +163,13 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
   }, [fetchAllMetaData]);
   
   useEffect(() => {
-    // This effect ensures that if a ticket is provided (edit mode),
-    // the form is reset with the ticket's data once metadata (like statusOptions) is available.
     if (formMode === 'edit' && ticket && statusOptions.length > 0) {
       reset({
         problemDescription: ticket.problemDescription,
         priority: ticket.prioridade.descricao,
         type: ticket.tipo.descricao,
         responsavelEmail: ticket.responsavel?.email || '',
-        status: ticket.situacao.descricao, // This is now reliably set
+        status: ticket.situacao.descricao, 
         resolutionDetails: ticket.resolutionDetails || '',
         evidencias: ticket.evidencias,
         anexos: ticket.anexos || '',
@@ -187,7 +177,6 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
         origem: ticket.origem.descricao,
       });
     } else if (formMode === 'create' && statusOptions.length > 0 && !watch('status')) {
-        // Ensure default status is set for create mode once options are loaded
         setValue('status', statusOptions.find(s => s.descricao === "Para fazer")?.descricao || statusOptions[0]?.descricao || '');
     }
   }, [ticket, reset, formMode, statusOptions, setValue, watch]);
@@ -195,18 +184,16 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
 
   const handleFormSubmit = (data: TicketFormData) => {
     startTransition(async () => {
-      // Ensure status is included if in create mode and it's not set explicitly by user yet
       const dataToSend = { ...data };
       if (formMode === 'create' && !dataToSend.status && statusOptions.length > 0) {
         dataToSend.status = statusOptions.find(s => s.descricao === "Para fazer")?.descricao || statusOptions[0]?.descricao || '';
       }
 
-
       const result = await onSubmit(dataToSend, ticket?.id);
       if (result.success) {
         toast({
           title: formMode === 'create' ? "Ticket Criado" : "Ticket Atualizado",
-          description: `Ticket ${result.ticket?.id} foi ${formMode === 'create' ? 'criado' : 'atualizado'} com sucesso.`,
+          description: `Ticket ${result.ticket?.numeroTicket || result.ticket?.id} foi ${formMode === 'create' ? 'criado' : 'atualizado'} com sucesso.`,
           variant: 'default',
         });
       } else {
@@ -236,13 +223,14 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
       <Card className="border-0 shadow-none">
         <CardHeader>
           <CardTitle className="font-headline text-2xl">
-            {formMode === 'create' ? 'Criar Novo Ticket de Suporte' : `Editar Ticket ${ticket?.id || ''}`}
+            {formMode === 'create' ? 'Criar Novo Ticket de Suporte' : `Editar Ticket ${ticket?.numeroTicket || ticket?.id || ''}`}
           </CardTitle>
           {formMode === 'create' && <CardDescription>Preencha os detalhes abaixo para submeter um novo ticket de suporte.</CardDescription>}
         </CardHeader>
         <CardContent className="space-y-6">
           {formMode === 'edit' && ticket && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm p-4 border rounded-md bg-muted/50">
+              <div><strong>Nº Ticket:</strong> {ticket.numeroTicket}</div>
               <div><strong>Solicitante:</strong> {ticket.solicitante.nome} ({ticket.solicitante.email})</div>
               <div><strong>Abertura:</strong> {new Date(ticket.createdAt).toLocaleString()}</div>
               {ticket.inicioAtendimento && <div><strong>Início Atendimento:</strong> {new Date(ticket.inicioAtendimento).toLocaleString()}</div>}
@@ -396,7 +384,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="unassigned">Não atribuído</SelectItem>
-                      {assigneeOptions.map(a => <SelectItem key={a.email} value={a.email}>{a.nome} ({a.email})</SelectItem>)}
+                      {assigneeOptions.map(a => <SelectItem key={a.id} value={a.email}>{a.nome} ({a.email})</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )}
@@ -461,4 +449,3 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
     </form>
   );
 }
-
