@@ -1,5 +1,5 @@
 
-import { ArrowDown, Minus, ArrowUp, AlertTriangle, ChevronUpSquare, HelpCircle } from 'lucide-react';
+import { ArrowDown, Minus, ArrowUp, AlertTriangle, ChevronUpSquare, HelpCircle, ArrowUpWideNarrow } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -12,14 +12,14 @@ export function TicketPriorityIcon({ priorityDesc, size = 4 }: TicketPriorityIco
   const normalizedPriority = priorityDesc.toLowerCase();
   let config;
 
-  if (normalizedPriority.includes('baixo') || normalizedPriority.includes('low')) {
+  if (normalizedPriority.includes('baixa') || normalizedPriority.includes('low')) {
     config = { icon: <ArrowDown />, color: 'text-green-600', label: `Prioridade ${priorityDesc}` };
-  } else if (normalizedPriority.includes('normal') || normalizedPriority.includes('medium')) {
+  } else if (normalizedPriority.includes('média') || normalizedPriority.includes('medium')) {
     config = { icon: <Minus />, color: 'text-yellow-600', label: `Prioridade ${priorityDesc}` };
-  } else if (normalizedPriority.includes('alto') || normalizedPriority.includes('high')) {
+  } else if (normalizedPriority.includes('alta') || normalizedPriority.includes('high')) {
     config = { icon: <ArrowUp />, color: 'text-orange-600', label: `Prioridade ${priorityDesc}` };
-  } else if (normalizedPriority.includes('crítico') || normalizedPriority.includes('critico')) {
-    config = { icon: <ChevronUpSquare />, color: 'text-red-600', label: `Prioridade ${priorityDesc}` };
+  } else if (normalizedPriority.includes('crítica') || normalizedPriority.includes('critical')) {
+    config = { icon: <ArrowUpWideNarrow />, color: 'text-red-600', label: `Prioridade ${priorityDesc}` };
   } else {
     config = { icon: <HelpCircle />, color: 'text-gray-500', label: `Prioridade ${priorityDesc}` };
   }

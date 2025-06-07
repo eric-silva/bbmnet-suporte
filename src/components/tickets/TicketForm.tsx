@@ -29,7 +29,7 @@ const ticketFormSchema = z.object({
   problemDescription: z.string().min(10, 'A descrição do problema deve ter pelo menos 10 caracteres.'),
   priority: z.string().min(1, "Selecione uma prioridade."),
   type: z.string().min(1, "Selecione um tipo."),
-  responsavelEmail: z.string().email({ message: "E-mail inválido." }).nullable().or(z.literal('')),
+  responsavelEmail: z.string().email({ message: "E-mail inválido." }).nullable().or(z.literal('')).default('').optional(),
   status: z.string().min(1, "Selecione uma situação.").optional(), 
   resolutionDetails: z.string().optional().nullable(),
   evidencias: z.string().min(1, 'O campo Evidências é obrigatório. Por favor, descreva ou cole links para as evidências.'),
@@ -64,7 +64,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
       problemDescription: '',
       priority: '', 
       type: '', 
-      responsavelEmail: '',
+      responsavelEmail: '', // always a string, never undefined
       status: '', 
       resolutionDetails: '',
       evidencias: '',
