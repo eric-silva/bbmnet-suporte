@@ -119,17 +119,41 @@ export default function ChartsPage() {
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorJson;
+        let errorMessage = `HTTP error! Status: ${response.status} ${response.statusText || ''}`;
+        try {
+          errorJson = await response.json();
+          if (errorJson && errorJson.message) {
+            errorMessage = errorJson.message;
+             if (process.env.NODE_ENV !== 'production' && errorJson.details) {
+                 const detailsString = typeof errorJson.details === 'string' ? errorJson.details : JSON.stringify(errorJson.details);
+                 errorMessage += ` (Detalhes: ${detailsString})`;
+            }
+          }
+        } catch (e) {
+          console.warn("Não foi possível analisar a resposta de erro como JSON:", e);
+        }
+        throw new Error(errorMessage);
       }
       const fetchedTickets = await response.json();
       setAllTickets(fetchedTickets);
     } catch (error) {
-      console.error("Falha ao buscar tickets:", error);
+      console.error("Falha ao buscar tickets para gráficos:", error);
+      let userFriendlyDescription = "Não foi possível carregar os dados dos tickets para os gráficos.";
+      if (error instanceof Error) {
+        userFriendlyDescription = error.message;
+        if (error.message.includes("Status: 500")) {
+          userFriendlyDescription = "Ocorreu um erro inesperado no servidor ao buscar os tickets. Verifique os logs do servidor para mais detalhes ou tente novamente. Erro original: " + error.message;
+        } else if (error.message.includes("HTTP error!")) {
+          userFriendlyDescription = "Falha na comunicação com o servidor ao buscar os tickets. Detalhes: " + error.message;
+        }
+      }
       toast({
-        title: "Erro ao buscar tickets",
-        description: "Não foi possível carregar os dados dos tickets para os gráficos.",
+        title: "Erro ao Buscar Tickets",
+        description: userFriendlyDescription,
         variant: "destructive",
       });
+      setAllTickets([]); // Clear tickets on error
     } finally {
       setIsLoadingTickets(false);
     }
@@ -193,7 +217,7 @@ export default function ChartsPage() {
             <Select 
               onValueChange={handleFieldChange} 
               value={selectedFieldInfo?.value || CLEAR_SELECTION_VALUE}
-              disabled={isLoadingTickets || allTickets.length === 0}
+              disabled={isLoadingTickets || (allTickets.length === 0 && !isLoadingTickets)} // Disable if loading OR if loaded and no tickets
             >
               <SelectTrigger className="w-full sm:w-[280px] h-10">
                 <SelectValue placeholder={isLoadingTickets ? "Carregando dados..." : (allTickets.length === 0 ? "Sem tickets para analisar" : "Selecione um tipo de gráfico...")} />
@@ -216,14 +240,15 @@ export default function ChartsPage() {
         </Card>
 
         <div id="chart-to-print-area" ref={chartAreaRef}>
-          {isLoadingTickets ? (
+          {isLoadingTickets && allTickets.length === 0 ? ( // Show skeleton only if loading and no tickets yet (initial load)
              <Card className="h-[450px] flex flex-col items-center justify-center text-center shadow-lg charts-page-controls-print-hide">
               <CardHeader>
                 <CardTitle>Carregando Dados...</CardTitle>
               </CardHeader>
               <CardContent>
                 <Skeleton className="h-12 w-1/2 mx-auto mb-4" />
-                <p className="text-muted-foreground">Buscando tickets para os gráficos.</p>
+                 <Skeleton className="w-full h-[250px] rounded-lg" />
+                <p className="text-muted-foreground mt-4">Buscando tickets para os gráficos.</p>
               </CardContent>
             </Card>
           ) : isProcessingChart ? (
@@ -245,12 +270,12 @@ export default function ChartsPage() {
           ) : (
             <Card className="h-[450px] flex flex-col items-center justify-center text-center shadow-lg">
               <CardHeader>
-                <CardTitle>{allTickets.length === 0 ? 'Sem Dados para Gráficos' : 'Nenhum Gráfico Selecionado'}</CardTitle>
+                <CardTitle>{allTickets.length === 0 && !isLoadingTickets ? 'Sem Dados para Gráficos' : 'Nenhum Gráfico Selecionado'}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  {allTickets.length === 0 
-                    ? 'Não há tickets disponíveis para gerar visualizações.'
+                  {allTickets.length === 0 && !isLoadingTickets
+                    ? 'Não há tickets disponíveis para gerar visualizações no momento.'
                     : 'Por favor, selecione um tipo de gráfico no menu acima para visualizar os dados.'
                   }
                 </p>
@@ -263,3 +288,4 @@ export default function ChartsPage() {
     </ScrollArea>
   );
 }
+
