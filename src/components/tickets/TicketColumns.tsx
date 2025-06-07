@@ -76,7 +76,7 @@ export const getTicketColumns = (
     },
   },
   {
-    id: 'tipo.descricao', // Explicit ID
+    id: 'tipo.descricao', // Explicit ID ensured
     accessorKey: 'tipo.descricao',
     header: ({ column }) => (
        <Button
