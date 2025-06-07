@@ -63,10 +63,10 @@ export interface Ticket {
 }
 
 // For forms and general use where only name/email is needed for an assignee for dropdowns
-export interface Assignee {
-  email: string;
-  name: string;
-}
+// export interface Assignee {
+//   email: string;
+//   name: string;
+// }
 
 // For TicketForm Zod schema and API communication
 // This interface represents the data structure expected by the form and its Zod schema.

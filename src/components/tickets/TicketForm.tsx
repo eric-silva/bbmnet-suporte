@@ -17,12 +17,12 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import type { Ticket, Assignee, BaseEntity, Prioridade, Tipo, Situacao, Ambiente, Origem } from '@/types';
-// Removed prioridadeValues, tipoValues etc. from '@/types'
+import type { Ticket, Prioridade, Tipo, Situacao, Ambiente, Origem } from '@/types';
 import { AiAssigneeSuggestion } from './AiAssigneeSuggestion';
 import { useSession } from '@/components/auth/AppProviders';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Usuario } from '@prisma/client';
 
 // Updated Zod schema - values are string descriptions.
 // Validation if these descriptions exist in DB is handled by the backend.
@@ -53,7 +53,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   
-  const [assigneeOptions, setAssigneeOptions] = useState<Assignee[]>([]);
+  const [assigneeOptions, setAssigneeOptions] = useState<Usuario[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<Prioridade[]>([]);
   const [typeOptions, setTypeOptions] = useState<Tipo[]>([]);
   const [statusOptions, setStatusOptions] = useState<Situacao[]>([]);
@@ -263,7 +263,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
             {errors.problemDescription && <p className="text-sm text-destructive mt-1">{errors.problemDescription.message}</p>}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <Label htmlFor="priority">Prioridade <span className="text-destructive">*</span></Label>
               <Controller
@@ -301,33 +301,6 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
               />
               {errors.type && <p className="text-sm text-destructive mt-1">{errors.type.message}</p>}
             </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="ambiente">Ambiente <span className="text-destructive">*</span></Label>
-              <Controller
-                name="ambiente"
-                control={control}
-                render={({ field }) => (
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    className="flex space-x-4 mt-2"
-                    disabled={isPending || environmentOptions.length === 0}
-                  >
-                    {environmentOptions.length === 0 && <Label className="text-sm text-muted-foreground">Carregando...</Label>}
-                    {environmentOptions.map(env => (
-                      <div key={env.id} className="flex items-center space-x-2">
-                        <RadioGroupItem value={env.descricao} id={`ambiente-${env.id}`} />
-                        <Label htmlFor={`ambiente-${env.id}`}>{env.descricao}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                )}
-              />
-              {errors.ambiente && <p className="text-sm text-destructive mt-1">{errors.ambiente.message}</p>}
-            </div>
 
             <div>
               <Label htmlFor="origem">Origem <span className="text-destructive">*</span></Label>
@@ -353,6 +326,35 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
             </div>
           </div>
           
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+            <div className="w-full max-w-xs">
+              <Label htmlFor="ambiente">Ambiente <span className="text-destructive">*</span></Label>
+              <Controller
+              name="ambiente"
+              control={control}
+              render={({ field }) => (
+                <RadioGroup
+                onValueChange={field.onChange}
+                value={field.value}
+                className="flex space-x-4 mt-2"
+                disabled={isPending || environmentOptions.length === 0}
+                >
+                {environmentOptions.length === 0 && <Label className="text-sm text-muted-foreground">Carregando...</Label>}
+                {environmentOptions.map(env => (
+                  <div key={env.id} className="flex items-center space-x-2">
+                  <RadioGroupItem value={env.descricao} id={`ambiente-${env.id}`} />
+                  <Label htmlFor={`ambiente-${env.id}`}>{env.descricao}</Label>
+                  </div>
+                ))}
+                </RadioGroup>
+              )}
+              />
+              {errors.ambiente && <p className="text-sm text-destructive mt-1">{errors.ambiente.message}</p>}
+            </div>
+
+          </div>
+
+          
           <div>
             <Label htmlFor="evidencias">Evidências <span className="text-destructive">*</span></Label>
             <Textarea
@@ -377,29 +379,31 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
             {errors.anexos && <p className="text-sm text-destructive mt-1">{errors.anexos.message}</p>}
           </div>
           
-          <div>
-            <Label htmlFor="responsavelEmail">Responsável</Label>
-            <Controller
-              name="responsavelEmail"
-              control={control}
-              render={({ field }) => (
-                <Select 
-                  onValueChange={(value) => field.onChange(value === 'unassigned' ? '' : value)} 
-                  value={field.value || 'unassigned'}
-                  disabled={isPending || assigneeOptions.length === 0}
-                >
-                  <SelectTrigger id="responsavelEmail" className="mt-1">
-                    <SelectValue placeholder={assigneeOptions.length === 0 ? "Carregando..." : "Selecione o responsável"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">Não atribuído</SelectItem>
-                    {assigneeOptions.map(a => <SelectItem key={a.email} value={a.email}>{a.name} ({a.email})</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.responsavelEmail && <p className="text-sm text-destructive mt-1">{errors.responsavelEmail.message}</p>}
-          </div>
+          {formMode === 'edit' && (
+            <div>
+              <Label htmlFor="responsavelEmail">Responsável</Label>
+              <Controller
+                name="responsavelEmail"
+                control={control}
+                render={({ field }) => (
+                  <Select 
+                    onValueChange={(value) => field.onChange(value === 'unassigned' ? '' : value)} 
+                    value={field.value || 'unassigned'}
+                    disabled={isPending || assigneeOptions.length === 0}
+                  >
+                    <SelectTrigger id="responsavelEmail" className="mt-1">
+                      <SelectValue placeholder={assigneeOptions.length === 0 ? "Carregando..." : "Selecione o responsável"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Não atribuído</SelectItem>
+                      {assigneeOptions.map(a => <SelectItem key={a.email} value={a.email}>{a.nome} ({a.email})</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.responsavelEmail && <p className="text-sm text-destructive mt-1">{errors.responsavelEmail.message}</p>}
+            </div>
+          )}
 
           {problemDescriptionValue && problemDescriptionValue.length >= 20 && (
              <AiAssigneeSuggestion
