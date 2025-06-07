@@ -1,8 +1,17 @@
 
+// src/lib/store.ts
+// Este arquivo está obsoleto e será substituído pelo uso do Prisma ORM.
+// O repositório em memória para tickets não é mais necessário.
+// As operações de dados (get, add, update, find, generateId)
+// serão tratadas pelos API routes usando o Prisma Client.
+
+// export {}; // Mantém o arquivo como um módulo se todo o conteúdo for removido.
+
+// Comentando o conteúdo antigo para referência, mas não deve ser usado.
+/*
 import type { Ticket } from '@/types';
 import { MOCK_USER, PERMITTED_ASSIGNEES } from './constants';
 
-// Repositório em memória para tickets
 let tickets: Ticket[] = [
   {
     id: 'TKT-001',
@@ -21,41 +30,7 @@ let tickets: Ticket[] = [
     inicioAtendimento: null,
     terminoAtendimento: null,
   },
-  {
-    id: 'TKT-002',
-    problemDescription: 'Necessidade de funcionalidade para exportar para CSV o relatório de usuários. Isso ajudará na análise mensal.',
-    priority: 'Alto',
-    type: 'Melhoria',
-    solicitanteEmail: 'outro@example.com',
-    solicitanteName: 'Outro Usuário',
-    responsavelEmail: PERMITTED_ASSIGNEES[1]?.email || null,
-    status: 'Em Andamento',
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 dias atrás
-    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 dia atrás
-    inicioAtendimento: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    terminoAtendimento: null,
-    evidencias: "Documento de requisitos: http://example.com/export-csv-req.pdf",
-    ambiente: "Homologação",
-    origem: "Licitações",
-  },
-  {
-    id: 'TKT-003',
-    problemDescription: 'Como faço para redefinir minha senha? Não consigo encontrar a opção na página de configurações.',
-    priority: 'Normal',
-    type: 'Apoio Técnico',
-    solicitanteEmail: MOCK_USER.email,
-    solicitanteName: MOCK_USER.name,
-    responsavelEmail: PERMITTED_ASSIGNEES[2]?.email || null,
-    status: 'Finalizado',
-    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 dias atrás
-    updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 dias atrás
-    resolutionDetails: 'Instruções fornecidas para redefinir a senha através do link de e-mail.',
-    evidencias: "Usuário relatou dificuldade em encontrar a opção.",
-    ambiente: "Produção",
-    origem: "Cadastramento",
-    inicioAtendimento: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
-    terminoAtendimento: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-  },
+  // ... outros tickets mockados ...
 ];
 
 export const getTicketsStore = (): Ticket[] => tickets;
@@ -78,7 +53,6 @@ export const findTicketById = (id: string): Ticket | undefined => {
 };
 
 export const generateTicketId = (): string => {
-  // Encontra o maior número de ID existente para evitar colisões se a lista for reordenada.
   let maxIdNumber = 0;
   tickets.forEach(ticket => {
     if (ticket.id.startsWith('TKT-')) {
@@ -91,3 +65,8 @@ export const generateTicketId = (): string => {
   const newIdNumber = maxIdNumber + 1;
   return `TKT-${String(newIdNumber).padStart(3, '0')}`;
 };
+*/
+
+console.warn("src/lib/store.ts is deprecated and should be removed. Data is now managed by Prisma.");
+
+export {};

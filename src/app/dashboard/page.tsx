@@ -1,14 +1,14 @@
 
 'use client';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { TicketDataTable } from '@/components/tickets/TicketDataTable';
 import { getTicketColumns } from '@/components/tickets/TicketColumns';
 import { CreateTicketButton } from '@/components/tickets/CreateTicketButton';
-import { getTickets, updateTicketAction } from '@/app/actions/tickets';
 import type { Ticket } from '@/types';
 import { useToast } from "@/hooks/use-toast";
+import { useSession } from '@/components/auth/AppProviders';
 import {
   Dialog,
   DialogContent,
@@ -25,11 +25,18 @@ export default function DashboardPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const { toast } = useToast();
+  const { getAuthHeaders } = useSession();
 
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     setIsLoading(true);
     try {
-      const fetchedTickets = await getTickets();
+      const response = await fetch('/api/tickets', {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const fetchedTickets: Ticket[] = await response.json();
       setTickets(fetchedTickets);
     } catch (error) {
       console.error("Falha ao buscar tickets:", error);
@@ -41,11 +48,11 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast, getAuthHeaders]);
 
   useEffect(() => {
     fetchTickets();
-  }, []);
+  }, [fetchTickets]);
 
 
   const handleEdit = (ticket: Ticket) => {
@@ -53,18 +60,39 @@ export default function DashboardPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateTicket = async (formData: FormData) => {
-    if (!selectedTicket) return { success: false, error: 'Nenhum ticket selecionado para atualização.' };
-    const result = await updateTicketAction(selectedTicket.id, formData);
-    if (result.success) {
+  const handleUpdateTicket = async (formData: FormData, ticketId: string) => {
+    if (!ticketId) return { success: false, error: 'Nenhum ticket selecionado para atualização.' };
+    
+    const objectData: Record<string, any> = {};
+    formData.forEach((value, key) => { objectData[key] = value; });
+
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(objectData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      const updatedTicket = await response.json();
       setIsEditModalOpen(false);
       setSelectedTicket(null);
-      fetchTickets(); 
+      fetchTickets(); // Refetch tickets to update the list
+      return { success: true, ticket: updatedTicket };
+    } catch (error: any) {
+      console.error("Falha ao atualizar ticket:", error);
+      return { success: false, error: error.message || 'Falha ao conectar com o servidor.' };
     }
-    return result;
   };
   
-  const columns = React.useMemo(() => getTicketColumns(handleEdit), [handleEdit]);
+  const columns = React.useMemo(() => getTicketColumns(handleEdit), []);
 
   if (isLoading) {
     return (
@@ -90,7 +118,7 @@ export default function DashboardPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold font-headline text-foreground">Tickets de Suporte</h1>
         <div className="flex items-center gap-2">
-          <CreateTicketButton />
+          <CreateTicketButton onTicketCreated={fetchTickets} />
           <Link href="/dashboard/charts" passHref>
             <Button variant="outline" size="icon" aria-label="Ver gráficos">
               <BarChart2 className="h-5 w-5" />
@@ -108,7 +136,8 @@ export default function DashboardPage() {
             </VisuallyHidden>
             <TicketForm
               ticket={selectedTicket}
-              onSubmit={handleUpdateTicket}
+              // onSubmit expects FormData and ticket ID for PUT
+              onSubmit={(formData) => handleUpdateTicket(formData, selectedTicket.id)}
               onCancel={() => setIsEditModalOpen(false)}
               formMode="edit"
             />

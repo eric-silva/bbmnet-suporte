@@ -1,12 +1,12 @@
 
 'use client';
 
-import React, { useEffect, useState, useTransition } from 'react';
+import React, { useEffect, useState, useTransition, useCallback } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/components/ui/input'; // Not used, but kept for consistency if needed later
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -19,8 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { Ticket, Priority, TicketStatus, TicketType, Assignee, Environment, Origin } from '@/types';
-import { priorities, ticketStatuses, ticketTypes, environments, origins } from '@/types';
-import { getPermittedAssignees, getEnvironments, getOrigins } from '@/app/actions/tickets';
+import { priorities, ticketStatuses, ticketTypes } from '@/types'; // environments and origins will be fetched
 import { AiAssigneeSuggestion } from './AiAssigneeSuggestion';
 import { useSession } from '@/components/auth/AppProviders';
 import { Loader2 } from 'lucide-react';
@@ -28,28 +27,29 @@ import { useToast } from '@/hooks/use-toast';
 
 const ticketFormSchema = z.object({
   problemDescription: z.string().min(10, 'A descrição do problema deve ter pelo menos 10 caracteres.'),
-  priority: z.enum(priorities, { errorMap: () => ({ message: "Selecione uma prioridade válida."}) }),
-  type: z.enum(ticketTypes, { errorMap: () => ({ message: "Selecione um tipo válido."}) }),
+  priority: z.enum(priorities as [string, ...string[]], { errorMap: () => ({ message: "Selecione uma prioridade válida."}) }),
+  type: z.enum(ticketTypes as [string, ...string[]], { errorMap: () => ({ message: "Selecione um tipo válido."}) }),
   responsavelEmail: z.string().email({ message: "E-mail inválido." }).nullable().or(z.literal('')),
-  status: z.enum(ticketStatuses, { errorMap: () => ({ message: "Selecione um status válido."}) }).optional(),
+  status: z.enum(ticketStatuses as [string, ...string[]], { errorMap: () => ({ message: "Selecione um status válido."}) }).optional(),
   resolutionDetails: z.string().optional(),
   evidencias: z.string().min(1, 'O campo Evidências é obrigatório. Por favor, descreva ou cole links para as evidências.'),
   anexos: z.string().optional(),
-  ambiente: z.enum(environments, { errorMap: () => ({ message: "Selecione um ambiente válido."}) }),
-  origem: z.enum(origins, { errorMap: () => ({ message: "Selecione uma origem válida."}) }),
+  // environment and origin values will be dynamic based on fetch
+  ambiente: z.string().min(1, "Selecione um ambiente válido."),
+  origem: z.string().min(1, "Selecione uma origem válida."),
 });
 
 export type TicketFormData = z.infer<typeof ticketFormSchema>;
 
 interface TicketFormProps {
   ticket?: Ticket | null;
-  onSubmit: (data: FormData) => Promise<{ success: boolean; error?: any; ticket?: Ticket }>;
+  onSubmit: (data: FormData, ticketId?: string) => Promise<{ success: boolean; error?: any; ticket?: Ticket }>;
   onCancel: () => void;
   formMode: 'create' | 'edit';
 }
 
 export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormProps) {
-  const { session } = useSession();
+  const { session, getAuthHeaders } = useSession();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [assignees, setAssignees] = useState<Assignee[]>([]);
@@ -63,30 +63,56 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
       priority: ticket?.priority || 'Normal',
       type: ticket?.type || 'Bug',
       responsavelEmail: ticket?.responsavelEmail || '',
-      status: ticket?.status || (formMode === 'create' ? 'Para fazer' : 'Open'), // 'Open' is a fallback, server sets 'Para fazer'
+      status: ticket?.status || (formMode === 'create' ? 'Para fazer' : undefined),
       resolutionDetails: ticket?.resolutionDetails || '',
       evidencias: ticket?.evidencias || '',
       anexos: ticket?.anexos || '',
-      ambiente: ticket?.ambiente || 'Produção',
-      origem: ticket?.origem || 'Sala de Negociação',
+      ambiente: ticket?.ambiente || '', // Default to empty, will be set by fetch
+      origem: ticket?.origem || '',   // Default to empty, will be set by fetch
     },
   });
 
   const problemDescriptionValue = watch('problemDescription');
+  const currentResponsavelEmail = watch('responsavelEmail');
 
-  useEffect(() => {
-    async function fetchData() {
-      const [fetchedAssignees, envs, orgs] = await Promise.all([
-        getPermittedAssignees(),
-        getEnvironments(),
-        getOrigins()
+
+  const fetchMetadata = useCallback(async () => {
+    try {
+      const [assigneesRes, envsRes, orgsRes] = await Promise.all([
+        fetch('/api/meta/assignees', { headers: getAuthHeaders() }),
+        fetch('/api/meta/environments', { headers: getAuthHeaders() }),
+        fetch('/api/meta/origins', { headers: getAuthHeaders() }),
       ]);
+
+      if (!assigneesRes.ok || !envsRes.ok || !orgsRes.ok) {
+        throw new Error('Failed to fetch metadata');
+      }
+
+      const fetchedAssignees = await assigneesRes.json();
+      const envs = await envsRes.json();
+      const orgs = await orgsRes.json();
+      
       setAssignees(fetchedAssignees);
       setFetchedEnvironments(envs);
       setFetchedOrigins(orgs);
+
+      // Set default values after fetching if in create mode or if current value is not in fetched list
+      if (formMode === 'create' || (envs.length > 0 && !envs.includes(watch('ambiente')))) {
+        setValue('ambiente', envs[0] || '');
+      }
+      if (formMode === 'create' || (orgs.length > 0 && !orgs.includes(watch('origem')))) {
+        setValue('origem', orgs[0] || '');
+      }
+
+    } catch (error) {
+      console.error("Failed to fetch form metadata:", error);
+      toast({ title: "Erro ao carregar dados", description: "Não foi possível carregar opções para o formulário.", variant: "destructive" });
     }
-    fetchData();
-  }, []);
+  }, [getAuthHeaders, toast, formMode, setValue, watch]);
+
+  useEffect(() => {
+    fetchMetadata();
+  }, [fetchMetadata]);
 
   useEffect(() => {
     if (ticket) {
@@ -102,43 +128,49 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
         ambiente: ticket.ambiente,
         origem: ticket.origem,
       });
-    } else { // Create mode defaults
-      reset({
-        problemDescription: '',
-        priority: 'Normal',
-        type: 'Bug',
-        responsavelEmail: '', // Vazio na criação
-        status: 'Para fazer', // Definido no servidor, mas útil para UI se necessário
-        resolutionDetails: '',
-        evidencias: '',
-        anexos: '',
-        ambiente: 'Produção',
-        origem: 'Sala de Negociação',
-      });
+    } else if (formMode === 'create') {
+        // Default for create mode, ensure status is set if not already.
+        // Environment and origin defaults are handled after fetch.
+         reset(currentValues => ({
+            ...currentValues, // Keep other potential defaults or user input
+            problemDescription: '',
+            priority: 'Normal',
+            type: 'Bug',
+            responsavelEmail: '',
+            status: 'Para fazer',
+            resolutionDetails: '',
+            evidencias: '',
+            anexos: '',
+            ambiente: fetchedEnvironments.length > 0 ? fetchedEnvironments[0] : '',
+            origem: fetchedOrigins.length > 0 ? fetchedOrigins[0] : '',
+        }));
     }
-  }, [ticket, reset, formMode]);
+  }, [ticket, reset, formMode, fetchedEnvironments, fetchedOrigins]);
+
 
   const handleFormSubmit = (data: TicketFormData) => {
     startTransition(async () => {
       const formData = new FormData();
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-           // Para o Zod Schema, string vazia para email deve ser tratada.
-          // O servidor espera null se não atribuído, mas o Select pode enviar string vazia.
           if (key === 'responsavelEmail' && value === '') {
-            formData.append(key, ''); // Deixa o backend converter para null se necessário ou manter string vazia
+            // API expects null for unassigned, not empty string from select
+            formData.append(key, ''); // API will handle empty string to null if necessary
           } else {
             formData.append(key, String(value));
           }
         }
       });
       
-      if (formMode === 'create' && !data.status) {
-        formData.append('status', 'Para fazer');
+      // Ensure status is included for edit mode, or default for create mode
+      if (formMode === 'edit' && data.status) {
+         formData.set('status', data.status);
+      } else if (formMode === 'create' && !data.status) {
+         formData.set('status', 'Para fazer');
       }
 
 
-      const result = await onSubmit(formData);
+      const result = await onSubmit(formData, ticket?.id);
       if (result.success) {
         toast({
           title: formMode === 'create' ? "Ticket Criado" : "Ticket Atualizado",
@@ -148,7 +180,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
       } else {
          const errorMessages = result.error ? 
           typeof result.error === 'string' ? result.error : 
-          Object.values(result.error).flat().join('\n') // Join with newline for better readability
+          (result.error.errors ? JSON.stringify(result.error.errors) : JSON.stringify(result.error))
           : 'Ocorreu um erro desconhecido.';
         toast({
           title: "Erro",
@@ -246,12 +278,12 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
                     onValueChange={field.onChange}
                     value={field.value}
                     className="flex space-x-4 mt-2"
-                    disabled={isPending}
+                    disabled={isPending || fetchedEnvironments.length === 0}
                   >
                     {fetchedEnvironments.map(env => (
                       <div key={env} className="flex items-center space-x-2">
-                        <RadioGroupItem value={env} id={`ambiente-${env}`} />
-                        <Label htmlFor={`ambiente-${env}`}>{env}</Label>
+                        <RadioGroupItem value={env} id={`ambiente-${env.replace(/\s+/g, '-')}`} />
+                        <Label htmlFor={`ambiente-${env.replace(/\s+/g, '-')}`}>{env}</Label>
                       </div>
                     ))}
                   </RadioGroup>
@@ -266,7 +298,11 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
                 name="origem"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isPending}>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value} 
+                    disabled={isPending || fetchedOrigins.length === 0}
+                  >
                     <SelectTrigger id="origem" className="mt-1">
                       <SelectValue placeholder="Selecione a origem" />
                     </SelectTrigger>
@@ -313,7 +349,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
                 <Select 
                   onValueChange={(value) => field.onChange(value === 'unassigned' ? '' : value)} 
                   value={field.value || 'unassigned'}
-                  disabled={isPending}
+                  disabled={isPending || assignees.length === 0}
                 >
                   <SelectTrigger id="responsavelEmail" className="mt-1">
                     <SelectValue placeholder="Selecione o responsável" />
@@ -328,10 +364,10 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
             {errors.responsavelEmail && <p className="text-sm text-destructive mt-1">{errors.responsavelEmail.message}</p>}
           </div>
 
-          {problemDescriptionValue && problemDescriptionValue.length > 0 && (
+          {problemDescriptionValue && problemDescriptionValue.length >= 20 && (
              <AiAssigneeSuggestion
               problemDescription={problemDescriptionValue}
-              currentAssignee={watch('responsavelEmail')}
+              currentAssignee={currentResponsavelEmail}
               onSuggestionAccept={handleAiSuggestionAccept}
               disabled={isPending}
             />
@@ -375,7 +411,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
           <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isPending} className="font-headline">
+          <Button type="submit" disabled={isPending || (fetchedEnvironments.length === 0 && fetchedOrigins.length === 0)} className="font-headline">
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {formMode === 'create' ? 'Criar Ticket' : 'Salvar Alterações'}
           </Button>

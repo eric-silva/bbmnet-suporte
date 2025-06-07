@@ -6,42 +6,72 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogTitle, // Added DialogTitle import
+  DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden'; // Added VisuallyHidden import
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { TicketForm } from './TicketForm';
-import { createTicketAction } from '@/app/actions/tickets';
 import { PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSession } from '@/components/auth/AppProviders'; // Import useSession
+import type { Ticket } from '@/types';
 
-export function CreateTicketButton() {
+interface CreateTicketButtonProps {
+  onTicketCreated?: () => void; // Callback to refresh ticket list
+}
+
+export function CreateTicketButton({ onTicketCreated }: CreateTicketButtonProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const { getAuthHeaders } = useSession(); // Get auth headers hook
 
   const handleSubmit = async (formData: FormData) => {
-    const result = await createTicketAction(formData);
-    if (result.success) {
+    const objectData: Record<string, any> = {};
+    formData.forEach((value, key) => { objectData[key] = value; });
+    
+    try {
+      const response = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(), // Add auth headers
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(objectData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.errors ? JSON.stringify(errorData.errors) : `HTTP error! status: ${response.status}`);
+      }
+      
+      const newTicket: Ticket = await response.json();
       toast({
         title: "Ticket Criado",
-        description: `O ticket ${result.ticket?.id} foi criado com sucesso.`,
+        description: `O ticket ${newTicket.id} foi criado com sucesso.`,
         variant: 'default',
       });
       setOpen(false);
-      // Consider revalidating path or refetching tickets on the dashboard page
-      // For example, if you pass a callback: `onTicketCreated?.()`
-    } else {
-      const errorMessages = result.error ?
-        typeof result.error === 'string' ? result.error :
-        Object.values(result.error).flat().join('\n')
-        : 'Ocorreu um erro desconhecido.';
+      onTicketCreated?.(); // Call the callback to refresh data
+      return { success: true, ticket: newTicket };
+    } catch (error: any) {
+      console.error("Erro ao Criar Ticket:", error);
+      let description = 'Ocorreu um erro desconhecido.';
+      try {
+        // Attempt to parse field errors if they exist
+        const parsedError = JSON.parse(error.message);
+        description = Object.values(parsedError).flat().join('\n');
+      } catch (e) {
+        // If parsing fails, use the original error message
+        description = error.message || 'Falha ao conectar com o servidor.';
+      }
+
       toast({
         title: "Erro ao Criar Ticket",
-        description: errorMessages,
+        description: description,
         variant: 'destructive',
       });
+      return { success: false, error: error.message };
     }
-    return result; // Always return result to ensure the form can handle it
   };
 
   return (

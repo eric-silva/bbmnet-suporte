@@ -3,11 +3,14 @@
 
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+// Textarea no longer needed here directly
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Sparkles, UserCheck } from 'lucide-react';
-import { suggestAssignee, type SuggestAssigneeInput, type SuggestAssigneeOutput } from '@/ai/flows/suggest-assignee';
+// type SuggestAssigneeInput, type SuggestAssigneeOutput no longer directly imported
+// import { suggestAssignee, type SuggestAssigneeInput, type SuggestAssigneeOutput } from '@/ai/flows/suggest-assignee';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useSession } from '@/components/auth/AppProviders';
+import type { SuggestAssigneeOutput } from '@/ai/flows/suggest-assignee'; // Keep output type
 
 interface AiAssigneeSuggestionProps {
   problemDescription: string;
@@ -25,6 +28,7 @@ export function AiAssigneeSuggestion({
   const [isLoading, setIsLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<SuggestAssigneeOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { getAuthHeaders } = useSession();
 
   const handleSuggestAssignee = useCallback(async () => {
     if (!problemDescription.trim() || problemDescription.length < 20) {
@@ -36,16 +40,29 @@ export function AiAssigneeSuggestion({
     setError(null);
     setSuggestion(null);
     try {
-      const input: SuggestAssigneeInput = { problemDescription };
-      const result = await suggestAssignee(input);
+      const response = await fetch('/api/ai/suggest-assignee', {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(), // Add auth headers, though this API might be public
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ problemDescription }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const result: SuggestAssigneeOutput = await response.json();
       setSuggestion(result);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao sugerir responsável:', err);
-      setError('Falha ao obter sugestão da IA. Por favor, tente novamente.');
+      setError(err.message || 'Falha ao obter sugestão da IA. Por favor, tente novamente.');
     } finally {
       setIsLoading(false);
     }
-  }, [problemDescription]);
+  }, [problemDescription, getAuthHeaders]);
 
   const handleAcceptSuggestion = () => {
     if (suggestion) {

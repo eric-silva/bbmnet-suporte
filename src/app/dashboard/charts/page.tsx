@@ -1,10 +1,9 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getTickets } from '@/app/actions/tickets';
 import { TicketCountChart, type ChartDataItem } from '@/components/charts/TicketCountChart';
 import { SaveToPdfButton } from '@/components/charts/SaveToPdfButton';
 import type { Ticket } from '@/types';
@@ -14,6 +13,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { useSession } from '@/components/auth/AppProviders';
+import { useToast } from "@/hooks/use-toast";
+
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))", 
@@ -80,8 +82,8 @@ type ChartableFieldKey = 'priority' | 'status' | 'type' | 'ambiente' | 'origem' 
 
 interface ChartableField {
   value: ChartableFieldKey;
-  label: string; // Used for the Select item display
-  titlePrefix: string; // Used for the chart title, e.g., "Tickets por"
+  label: string; 
+  titlePrefix: string; 
   description: string;
   maxCategories?: number;
 }
@@ -92,8 +94,8 @@ const chartableFields: ChartableField[] = [
   { value: 'type', label: 'Tipo', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por tipo de solicitação.' },
   { value: 'ambiente', label: 'Ambiente', titlePrefix: 'Tickets por', description: 'Distribuição de tickets entre ambientes.'},
   { value: 'origem', label: 'Origem', titlePrefix: 'Tickets por', description: 'Distribuição de tickets por origem do problema.'},
-  { value: 'responsavelEmail', label: 'Responsável', titlePrefix: 'Tickets por', description: 'Top 5 responsáveis com mais tickets.', maxCategories: 6 }, // 5 + Outros
-  { value: 'solicitanteName', label: 'Solicitante', titlePrefix: 'Tickets por', description: 'Top 5 solicitantes com mais tickets.', maxCategories: 6 }, // 5 + Outros
+  { value: 'responsavelEmail', label: 'Responsável', titlePrefix: 'Tickets por', description: 'Top 5 responsáveis com mais tickets.', maxCategories: 6 }, 
+  { value: 'solicitanteName', label: 'Solicitante', titlePrefix: 'Tickets por', description: 'Top 5 solicitantes com mais tickets.', maxCategories: 6 }, 
 ];
 
 const CLEAR_SELECTION_VALUE = "clear-selection";
@@ -107,22 +109,35 @@ export default function ChartsPage() {
   const [isLoadingTickets, setIsLoadingTickets] = useState(true);
   const [isProcessingChart, setIsProcessingChart] = useState(false);
   const chartAreaRef = useRef<HTMLDivElement>(null);
+  const { getAuthHeaders } = useSession();
+  const { toast } = useToast();
+
+  const fetchTickets = useCallback(async () => {
+    setIsLoadingTickets(true);
+    try {
+      const response = await fetch('/api/tickets', {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const fetchedTickets = await response.json();
+      setAllTickets(fetchedTickets);
+    } catch (error) {
+      console.error("Falha ao buscar tickets:", error);
+      toast({
+        title: "Erro ao buscar tickets",
+        description: "Não foi possível carregar os dados dos tickets para os gráficos.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingTickets(false);
+    }
+  }, [getAuthHeaders, toast]);
 
   useEffect(() => {
-    async function loadTickets() {
-      setIsLoadingTickets(true);
-      try {
-        const fetchedTickets = await getTickets();
-        setAllTickets(fetchedTickets);
-      } catch (error) {
-        console.error("Falha ao buscar tickets:", error);
-        // Consider adding a toast notification here
-      } finally {
-        setIsLoadingTickets(false);
-      }
-    }
-    loadTickets();
-  }, []);
+    fetchTickets();
+  }, [fetchTickets]);
 
   useEffect(() => {
     if (selectedFieldInfo && allTickets.length > 0) {
@@ -150,7 +165,8 @@ export default function ChartsPage() {
 
   const currentChartTitle = selectedFieldInfo ? `${selectedFieldInfo.titlePrefix} ${selectedFieldInfo.label}` : 'Selecione um Gráfico';
   const currentChartDescription = selectedFieldInfo ? selectedFieldInfo.description : 'Escolha uma categoria para visualizar a distribuição dos tickets.';
-  const isChartReady = !!(selectedFieldInfo && chartData && chartConfig && !isProcessingChart && !isLoadingTickets);
+  const isChartReady = !!(selectedFieldInfo && chartData && chartConfig && !isProcessingChart && !isLoadingTickets && allTickets.length > 0);
+
 
   return (
     <ScrollArea className="h-full">
@@ -177,9 +193,10 @@ export default function ChartsPage() {
             <Select 
               onValueChange={handleFieldChange} 
               value={selectedFieldInfo?.value || CLEAR_SELECTION_VALUE}
+              disabled={isLoadingTickets || allTickets.length === 0}
             >
               <SelectTrigger className="w-full sm:w-[280px] h-10">
-                <SelectValue placeholder="Selecione um tipo de gráfico..." />
+                <SelectValue placeholder={isLoadingTickets ? "Carregando dados..." : (allTickets.length === 0 ? "Sem tickets para analisar" : "Selecione um tipo de gráfico...")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -193,19 +210,31 @@ export default function ChartsPage() {
                 </SelectGroup>
               </SelectContent>
             </Select>
+            {isLoadingTickets && <p className="text-sm text-muted-foreground mt-2">Carregando dados dos tickets...</p>}
+            {!isLoadingTickets && allTickets.length === 0 && <p className="text-sm text-muted-foreground mt-2">Não há tickets cadastrados para gerar gráficos.</p>}
           </CardContent>
         </Card>
 
         <div id="chart-to-print-area" ref={chartAreaRef}>
           {isLoadingTickets ? (
-            <div className="flex justify-center items-center h-[300px] charts-page-controls-print-hide">
-              <Skeleton className="h-12 w-1/2" />
-              <p className="ml-4 text-muted-foreground">Carregando dados dos tickets...</p>
-            </div>
+             <Card className="h-[450px] flex flex-col items-center justify-center text-center shadow-lg charts-page-controls-print-hide">
+              <CardHeader>
+                <CardTitle>Carregando Dados...</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-12 w-1/2 mx-auto mb-4" />
+                <p className="text-muted-foreground">Buscando tickets para os gráficos.</p>
+              </CardContent>
+            </Card>
           ) : isProcessingChart ? (
-            <div className="flex justify-center items-center h-[450px] charts-page-controls-print-hide">
-               <Skeleton className="w-full h-[400px] rounded-lg" />
-            </div>
+            <Card className="h-[450px] flex flex-col items-center justify-center text-center shadow-lg charts-page-controls-print-hide">
+              <CardHeader>
+                <CardTitle>Processando Gráfico...</CardTitle>
+              </CardHeader>
+              <CardContent>
+                 <Skeleton className="w-full h-[300px] rounded-lg" />
+              </CardContent>
+            </Card>
           ) : isChartReady ? (
             <TicketCountChart 
               title={currentChartTitle} 
@@ -216,10 +245,15 @@ export default function ChartsPage() {
           ) : (
             <Card className="h-[450px] flex flex-col items-center justify-center text-center shadow-lg">
               <CardHeader>
-                <CardTitle>Nenhum Gráfico Selecionado</CardTitle>
+                <CardTitle>{allTickets.length === 0 ? 'Sem Dados para Gráficos' : 'Nenhum Gráfico Selecionado'}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">Por favor, selecione um tipo de gráfico no menu acima para visualizar os dados.</p>
+                <p className="text-muted-foreground">
+                  {allTickets.length === 0 
+                    ? 'Não há tickets disponíveis para gerar visualizações.'
+                    : 'Por favor, selecione um tipo de gráfico no menu acima para visualizar os dados.'
+                  }
+                </p>
               </CardContent>
             </Card>
           )}

@@ -1,0 +1,29 @@
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Ticket {
+  id                  String    @id @default(cuid())
+  problemDescription  String
+  priority            String    // Values: "Baixo", "Normal", "Alto", "Crítico"
+  type                String    // Values: "Intervenção", "Bug", "Melhoria", "Backlog", "Apoio Técnico"
+  solicitanteEmail    String
+  solicitanteName     String
+  responsavelEmail    String?
+  status              String    // Values from TicketStatus type
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  inicioAtendimento   DateTime?
+  terminoAtendimento  DateTime?
+  evidencias          String
+  anexos              String?
+  ambiente            String    // Values: "Homologação", "Produção"
+  origem              String    // Values from Origin type
+  resolutionDetails   String?
+}
