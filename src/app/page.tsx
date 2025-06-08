@@ -55,7 +55,6 @@ export default function HomePage() {
     setIsSubmitting(false);
   };
   
-  // Se estiver autenticando ou já autenticado, mostra tela de carregamento para redirecionar
   if (session.status === 'loading' || session.status === 'authenticated') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
@@ -65,7 +64,6 @@ export default function HomePage() {
     );
   }
 
-  // session.status === 'unauthenticated'
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
       <Card className="w-full max-w-md shadow-2xl">
@@ -116,7 +114,8 @@ export default function HomePage() {
                 <p className="mt-3 text-sm text-center text-destructive">{session.error}</p>
             )}
              <p className="mt-6 text-xs text-muted-foreground text-center">
-                (Use: user@example.com / password123 para teste)
+                Use um e-mail cadastrado em "Cadastros &gt; Usuários".
+                <br /> (Senha não verificada neste protótipo)
             </p>
           </CardFooter>
         </form>

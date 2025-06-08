@@ -3,17 +3,13 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 // This is a conceptual middleware.
-// In a real app with JWTs, you'd validate the token here.
-// For this mock setup, we'll check for a custom header.
+// It checks for a custom header X-Authenticated-User-Email which AppProviders sets after a successful mock login.
 async function authenticateRequest(request: NextRequest) {
-  const userEmail = request.headers.get('X-User-Email');
-  // In a real scenario, you would validate a token (e.g., JWT) here.
-  // For this mock, we just check if the email header exists.
-  // A more robust mock might involve a shared secret or a mock token.
+  const userEmail = request.headers.get('X-Authenticated-User-Email');
+
   if (userEmail) {
-    // You could potentially fetch user details from a database here if needed
-    // and attach to the request or a new header for downstream use.
-    // For now, just knowing the email exists is enough for this mock.
+    // In a real system with JWTs, you'd validate the token here.
+    // For this mock, the presence of the header (set by a successful client-side mock login) is sufficient.
     return { isAuthenticated: true, user: { email: userEmail } };
   }
   return { isAuthenticated: false, user: null };
@@ -22,15 +18,18 @@ async function authenticateRequest(request: NextRequest) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protect all API routes under /api/ except /api/auth/* or specific public routes
+  // Protect all API routes under /api/ except specific public routes
   if (pathname.startsWith('/api/')) {
-    // List public API routes that don't require authentication
     const publicApiRoutes = [
-      '/api/auth', // if you had auth specific routes like login/register
+      '/api/auth/mock-login', // New public login route
+      // Keep other meta routes public if they don't require strict auth yet
       '/api/meta/assignees',
       '/api/meta/environments',
       '/api/meta/origins',
-      '/api/ai/suggest-assignee' // Assuming AI suggestion doesn't need strict auth for now
+      '/api/meta/priorities',
+      '/api/meta/situacoes',
+      '/api/meta/tipos',
+      '/api/ai/suggest-assignee' 
     ];
 
     if (publicApiRoutes.some(route => pathname.startsWith(route))) {
@@ -39,15 +38,16 @@ export async function middleware(request: NextRequest) {
 
     const authResult = await authenticateRequest(request);
     if (!authResult.isAuthenticated) {
-      return new NextResponse(JSON.stringify({ message: 'Authentication required' }), {
+      return new NextResponse(JSON.stringify({ message: 'Authentication required. No X-Authenticated-User-Email header found or invalid.' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
       });
     }
     
-    // Add user info to headers for API routes to access
     const requestHeaders = new Headers(request.headers);
     if(authResult.user?.email) {
+        // This header is already set by getAuthHeaders on the client,
+        // but we ensure it's correctly passed for server-to-server or direct API calls if any.
         requestHeaders.set('X-Authenticated-User-Email', authResult.user.email);
     }
 
@@ -61,7 +61,6 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Configure which paths the middleware runs on
 export const config = {
-  matcher: ['/api/:path*'], // Apply to all API routes
+  matcher: ['/api/:path*'], 
 };

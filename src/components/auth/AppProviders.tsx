@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { LifeBuoy } from 'lucide-react';
-import { MOCK_CUSTOM_USER_CREDENTIALS, MOCK_CUSTOM_USER_SESSION_DATA } from '@/lib/constants';
+// MOCK_CUSTOM_USER_CREDENTIALS and MOCK_CUSTOM_USER_SESSION_DATA are removed from constants
 
 interface SessionUser {
   name?: string | null;
@@ -16,7 +16,7 @@ interface SessionUser {
 interface Session {
   user: SessionUser | null;
   status: 'authenticated' | 'unauthenticated' | 'loading';
-  error?: string | null;
+  error?: string | null; // For login errors
 }
 
 interface SessionContextType {
@@ -49,7 +49,7 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    if (session.status === 'unauthenticated' && pathname !== '/' && !pathname.startsWith('/api/auth')) { // Allow access to auth API routes
+    if (session.status === 'unauthenticated' && pathname !== '/' && !pathname.startsWith('/api/auth')) {
       router.push('/');
     } else if (session.status === 'authenticated' && pathname === '/') {
       router.push('/tickets');
@@ -58,15 +58,44 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const signIn = async (email?: string, password?: string): Promise<{ success: boolean, error?: string }> => {
     setSession(prev => ({ ...prev, status: 'loading', error: null }));
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
+    
+    if (!email || !password) {
+        const errorMsg = "E-mail e senha são obrigatórios.";
+        setSession({ user: null, status: 'unauthenticated', error: errorMsg });
+        return { success: false, error: errorMsg };
+    }
 
-    if (email === MOCK_CUSTOM_USER_CREDENTIALS.email && password === MOCK_CUSTOM_USER_CREDENTIALS.password) {
-      const userToStore = MOCK_CUSTOM_USER_SESSION_DATA;
+    try {
+      const response = await fetch('/api/auth/mock-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }), // Password sent but ignored by mock API
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorMsg = data.message || `Falha no login (status: ${response.status})`;
+        setSession({ user: null, status: 'unauthenticated', error: errorMsg });
+        localStorage.removeItem('mockUserSession');
+        return { success: false, error: errorMsg };
+      }
+      
+      // data should be { id, name, email } from the API
+      const userToStore: SessionUser = {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+      };
       localStorage.setItem('mockUserSession', JSON.stringify(userToStore));
       setSession({ user: userToStore, status: 'authenticated' });
       return { success: true };
-    } else {
-      const errorMsg = "Credenciais inválidas. Tente 'user@example.com' e 'password123'."
+
+    } catch (error) {
+      console.error("Sign in error:", error);
+      const errorMsg = "Ocorreu um erro de rede ou inesperado durante o login.";
       setSession({ user: null, status: 'unauthenticated', error: errorMsg });
       localStorage.removeItem('mockUserSession');
       return { success: false, error: errorMsg };
@@ -74,11 +103,11 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const signOut = async () => {
-    setSession(prev => ({ ...prev, status: 'loading' }));
-    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API call
+    setSession(prev => ({ ...prev, status: 'loading', error: null }));
+    await new Promise(resolve => setTimeout(resolve, 300)); 
     localStorage.removeItem('mockUserSession');
     setSession({ user: null, status: 'unauthenticated' });
-    router.push('/');
+    router.push('/'); 
   };
 
   const getAuthHeaders = useCallback((): Record<string, string> => {
@@ -87,7 +116,8 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
       try {
         const parsedUser = JSON.parse(storedUserString) as SessionUser;
         if (parsedUser.email) {
-          return { 'X-User-Email': parsedUser.email };
+          // For middleware and backend API calls to identify the user
+          return { 'X-Authenticated-User-Email': parsedUser.email };
         }
       } catch (e) {
         // Ignore error, return empty headers
