@@ -18,6 +18,7 @@ export interface Usuario {
   email: string;
   hashedPassword?: string | null;
   fotoUrl?: string | null;
+  isAtivo: boolean;
   createdAt: string; 
   updatedAt: string; 
 }
@@ -72,6 +73,15 @@ export interface TicketFormData {
   origem: string;   
 }
 
+// For UsuarioForm Zod schema and API communication
+export interface UsuarioFormData {
+  nome: string;
+  email: string;
+  fotoUrl?: string | null;
+  isAtivo?: boolean; // Optional in form, backend handles default for creation
+}
+
+
 // For Menu
 export interface MenuItem {
   id: string;
@@ -87,3 +97,4 @@ export interface MenuItem {
 export interface StructuredMenuItem extends MenuItem {
   subMenus: MenuItem[];
 }
+

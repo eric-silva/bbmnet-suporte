@@ -1,13 +1,25 @@
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
   provider        = "prisma-client-js"
   binaryTargets   = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+}
+
+model Menu {
+  id              String    @id @default(cuid())
+  titulo          String
+  nomeIcone       String
+  menuPrincipalId String?
+  menuPrincipal   Menu?     @relation("SubMenus", fields: [menuPrincipalId], references: [id], onDelete: Cascade)
+  subMenus        Menu[]    @relation("SubMenus")
+  isAtivo         Boolean   @default(true)
+  path            String    @default("#")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model Prioridade {
@@ -41,21 +53,22 @@ model Origem {
 }
 
 model Usuario {
-  id               String    @id @default(cuid())
-  nome             String    @db.Text
-  email            String    @unique // Email should be unique for login
-  hashedPassword   String? // For storing hashed passwords
-  fotoUrl          String?   @db.Text
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  ticketsCriados   Ticket[]  @relation("SolicitanteTickets")
-  ticketsAtribuidos Ticket[]  @relation("ResponsavelTickets")
+  id                 String    @id @default(cuid())
+  nome               String    @db.Text
+  email              String    @unique
+  hashedPassword     String?
+  fotoUrl            String?   @db.Text
+  isAtivo            Boolean   @default(true)
+  ticketsCriados     Ticket[]  @relation("TicketsCriadosPeloUsuario")
+  ticketsAtribuidos  Ticket[]  @relation("TicketsAtribuidosAoUsuario")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model Ticket {
   id                 String    @id @default(cuid())
-  numeroTicket       String    @unique // TCK-001
-  problemDescription String    @db.Text // Changed from 'descricao' to match existing usage
+  numeroTicket       String    @unique
+  problemDescription String    @db.Text // Renamed from 'descricao' for clarity
   prioridadeId       String
   prioridade         Prioridade @relation(fields: [prioridadeId], references: [id])
   tipoId             String
@@ -65,9 +78,9 @@ model Ticket {
   origemId           String
   origem             Origem    @relation(fields: [origemId], references: [id])
   solicitanteId      String
-  solicitante        Usuario   @relation("SolicitanteTickets", fields: [solicitanteId], references: [id])
+  solicitante        Usuario   @relation("TicketsCriadosPeloUsuario", fields: [solicitanteId], references: [id])
   responsavelId      String?
-  responsavel        Usuario?  @relation("ResponsavelTickets", fields: [responsavelId], references: [id])
+  responsavel        Usuario?  @relation("TicketsAtribuidosAoUsuario", fields: [responsavelId], references: [id])
   evidencias         String    @db.Text
   anexos             String?   @db.Text
   inicioAtendimento  DateTime?
@@ -77,30 +90,4 @@ model Ticket {
   situacao           Situacao  @relation(fields: [situacaoId], references: [id])
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
-
-  @@index([prioridadeId])
-  @@index([tipoId])
-  @@index([ambienteId])
-  @@index([origemId])
-  @@index([solicitanteId])
-  @@index([responsavelId])
-  @@index([situacaoId])
-}
-
-model Menu {
-  id              String  @id @default(cuid())
-  titulo          String
-  nomeIcone       String  // e.g., "Home", "Users", "Settings"
-  menuPrincipalId String?
-  isAtivo         Boolean @default(true)
-  path            String
-
-  menuPrincipal   Menu?   @relation("SubMenuItems", fields: [menuPrincipalId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  subMenus        Menu[]  @relation("SubMenuItems")
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-
-  @@index([menuPrincipalId])
 }
