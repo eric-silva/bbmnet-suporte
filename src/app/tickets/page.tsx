@@ -150,7 +150,7 @@ export default function TicketsPage() {
         <h1 className="text-3xl font-bold font-headline text-foreground">Tickets de Suporte</h1>
         <div className="flex items-center gap-2">
           <CreateTicketButton onTicketCreated={fetchTickets} />
-          <Link href="/dashboard/charts" passHref>
+          <Link href="/tickets/charts" passHref>
             <Button variant="outline" size="icon" aria-label="Ver gráficos">
               <BarChart2 className="h-5 w-5" />
             </Button>

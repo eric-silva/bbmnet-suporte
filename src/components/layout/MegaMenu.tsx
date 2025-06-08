@@ -28,7 +28,6 @@ export function MegaMenu({ isOpen, onOpenChange }: MegaMenuProps) {
   const { getAuthHeaders } = useSession();
 
   useEffect(() => {
-    console.log('menu ' + isOpen + ' ' + menuItems.length + ' ' + isLoading + ' ' + error);
     if (isOpen && menuItems.length === 0 && isLoading && !error) { // Fetch only if open and not already fetched/loading/errored
       fetchMenuItems();
     }
@@ -46,6 +45,7 @@ export function MegaMenu({ isOpen, onOpenChange }: MegaMenuProps) {
         const errorData = await response.json();
         throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
       }
+      
       const data: StructuredMenuItem[] = await response.json();
       setMenuItems(data);
     } catch (err: any) {
@@ -113,25 +113,33 @@ export function MegaMenu({ isOpen, onOpenChange }: MegaMenuProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8 p-6">
         {menuItems.map((mainItem) => (
           <div key={mainItem.id} className="flex flex-col">
-            <Link href={`${mainItem.path}`} passHref> {/* Example link, adjust as needed */}
-              <a className="group inline-block mb-2 text-foreground hover:text-primary transition-colors">
-                <h3 className="text-lg font-headline font-semibold flex items-center">
-                  <DynamicIcon name={mainItem.nomeIcone} className="mr-3 h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
-                  {mainItem.titulo}
-                </h3>
-              </a>
+            <Link
+              href={`${mainItem.path}`}
+              className="group inline-block mb-2 text-foreground hover:text-primary transition-colors"
+            >
+              <h3 className="text-lg font-headline font-semibold flex items-center">
+                <DynamicIcon
+                  name={mainItem.nomeIcone}
+                  className="mr-3 h-5 w-5 text-primary group-hover:scale-110 transition-transform"
+                />
+                {mainItem.titulo}
+              </h3>
             </Link>
             {mainItem.subMenus && mainItem.subMenus.length > 0 && (
-              <ul className="space-y-1 pl-8 border-l border-border ml-[10px]">
+              <ul className="space-y-1 pl-4 border-l border-border ml-[10px]">
                 {mainItem.subMenus.map((subItem) => (
                   <li key={subItem.id}>
-                     <Link href={`${subItem.path}`} passHref> {/* Example link */}
-                        <a className="text-sm text-muted-foreground hover:text-primary hover:font-medium transition-colors py-1 block">
-                           {/* Optional: Icon for sub-item if design includes it: 
-                               <DynamicIcon name={subItem.nomeIcone} className="mr-2 h-4 w-4 inline-block" /> 
-                           */}
-                           {subItem.titulo}
-                        </a>
+                    <Link
+                      href={`${subItem.path}`}
+                      className="text-sm align-middle text-muted-foreground hover:text-primary hover:font-medium transition-colors py-1 block"
+                    >
+                      <div className="font-headline font-semibold flex">
+                        <DynamicIcon
+                          name={subItem.nomeIcone}
+                          className="mr-3 h-4 w-4 text-primary group-hover:scale-110 transition-transform"
+                        />
+                        {subItem.titulo}
+                      </div>
                     </Link>
                   </li>
                 ))}
