@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { MOCK_CUSTOM_USER_SESSION_DATA, PERMITTED_ASSIGNEES } from '@/lib/constants';
+import { PERMITTED_ASSIGNEES } from '@/lib/constants';
 
 const TicketApiSchema = z.object({
   problemDescription: z.string().min(10, 'A descrição do problema deve ter pelo menos 10 caracteres.'),
@@ -11,7 +11,7 @@ const TicketApiSchema = z.object({
   responsavelEmail: z.string().email({ message: "E-mail inválido para responsável." }).nullable().or(z.literal('')),
   evidencias: z.string().min(1, 'O campo Evidências é obrigatório.'),
   anexos: z.string().optional().nullable(),
-  ambiente: z.string().min(1, "Ambiente é obrigatório."),
+  ambiente: z.string().min(1, "Ambiente é obrigatória."),
   origem: z.string().min(1, "Origem é obrigatória."),
   // status is handled by default on creation ("Para fazer")
 });
@@ -19,7 +19,7 @@ const TicketApiSchema = z.object({
 async function getNextTicketNumber(): Promise<string> {
   const allTickets = await prisma.ticket.findMany({
     select: { numeroTicket: true },
-    orderBy: { createdAt: 'asc' } // Ensures some order, though we parse all
+    orderBy: { createdAt: 'asc' } 
   });
 
   let maxNumericPart = 0;
@@ -79,9 +79,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
     }
 
-    const solicitanteDetailsFromAuth = MOCK_CUSTOM_USER_SESSION_DATA; 
-
-
     const body = await request.json(); 
     const parsed = TicketApiSchema.safeParse(body);
 
@@ -90,12 +87,14 @@ export async function POST(request: NextRequest) {
     }
     const data = parsed.data;
 
+    // Upsert solicitante based on authenticated user's email
     const solicitante = await prisma.usuario.upsert({
       where: { email: authenticatedUserEmail },
-      update: { nome: solicitanteDetailsFromAuth.name || authenticatedUserEmail.split('@')[0] },
+      update: {}, // No updates to name here, assuming it's managed elsewhere or set on first creation
       create: {
         email: authenticatedUserEmail,
-        nome: solicitanteDetailsFromAuth.name || authenticatedUserEmail.split('@')[0],
+        nome: authenticatedUserEmail.split('@')[0] || "Usuário do Sistema", // Default name from email
+        // hashedPassword will be null or managed by a separate user registration flow
       },
     });
 
@@ -105,10 +104,11 @@ export async function POST(request: NextRequest) {
                                  { email: data.responsavelEmail, name: data.responsavelEmail.split('@')[0] };
       const responsavel = await prisma.usuario.upsert({
         where: { email: data.responsavelEmail },
-        update: { nome: responsavelDetails.name },
+        update: { nome: responsavelDetails.name }, // Ensure name is also updated if user exists
         create: {
           email: data.responsavelEmail,
           nome: responsavelDetails.name,
+          // hashedPassword will be null or managed by a separate user registration flow
         },
       });
       responsavelConnect = { connect: { id: responsavel.id } };
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     const newTicket = await prisma.ticket.create({
       data: {
-        numeroTicket, // Add the generated ticket number
+        numeroTicket, 
         problemDescription: data.problemDescription,
         prioridade: { connect: { id: prioridadeRecord!.id } },
         tipo: { connect: { id: tipoRecord!.id } },
