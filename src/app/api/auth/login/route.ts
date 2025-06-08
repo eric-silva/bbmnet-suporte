@@ -2,10 +2,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+// In a real app, you'd use a library like jsonwebtoken
+// For this example, we'll create a very simple placeholder token
 
 const LoginRequestSchema = z.object({
   email: z.string().email({ message: "E-mail inválido." }),
-  password: z.string().min(1, { message: "Senha é obrigatória." }), // Password received but not used for validation in this mock
+  password: z.string().min(6, { message: "Senha deve ter pelo menos 6 caracteres." }),
 });
 
 export async function POST(request: NextRequest) {
@@ -17,16 +19,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Entrada inválida', errors: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
 
-    const { email } = parsed.data;
+    const { email, password } = parsed.data;
 
     const user = await prisma.usuario.findUnique({
       where: { email: email },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        isAtivo: true,
-      }
     });
 
     if (!user) {
@@ -37,19 +33,25 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: 'Este usuário está inativo. Entre em contato com o administrador.' }, { status: 403 });
     }
 
-    // In a real authentication system, you would verify the password here.
-    // For this mock, we assume if the user email exists and is active, login is successful.
-    // The password from the request is ignored for validation.
+    // SIMULATED PASSWORD VERIFICATION - NOT FOR PRODUCTION
+    const expectedHashedPassword = `mock_hashed_${password}`;
+    if (user.hashedPassword !== expectedHashedPassword) {
+      return NextResponse.json({ message: 'Senha inválida.' }, { status: 401 });
+    }
 
-    // Return minimal user data for the session
+    // SIMULATED TOKEN GENERATION - NOT FOR PRODUCTION
+    // In a real app, use JWTs signed with a secret key.
+    const token = `simulated-token-${user.id}-${Date.now()}`;
+
+    const { hashedPassword, ...userWithoutPassword } = user;
+
     return NextResponse.json({
-      id: user.id,
-      name: user.nome,
-      email: user.email,
+      user: userWithoutPassword,
+      token: token,
     });
 
   } catch (error) {
-    console.error('Error in mock login API:', error);
+    console.error('Error in login API:', error);
     let errorMessage = 'Falha ao tentar fazer login.';
     if (error instanceof Error) {
         errorMessage = error.message;

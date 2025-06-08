@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
-  password: z.string().min(1, { message: 'A senha é obrigatória.' }),
+  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }), // Password validation
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -43,7 +43,7 @@ export default function HomePage() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
-    const result = await signIn(data.email, data.password);
+    const result = await signIn(data.email, data.password); // signIn now expects password
     if (!result.success) {
       toast({
         title: 'Falha no Login',
@@ -51,7 +51,7 @@ export default function HomePage() {
         variant: 'destructive',
       });
     }
-    // O redirecionamento em caso de sucesso é tratado pelo useEffect ou pelo AppProviders
+    // Redirection on success is handled by useEffect or AppProviders
     setIsSubmitting(false);
   };
   
@@ -114,8 +114,8 @@ export default function HomePage() {
                 <p className="mt-3 text-sm text-center text-destructive">{session.error}</p>
             )}
              <p className="mt-6 text-xs text-muted-foreground text-center">
-                Use um e-mail cadastrado em "Cadastros &gt; Usuários".
-                <br /> (Senha registrada, mas não verificada neste protótipo)
+                Use um e-mail e senha cadastrados em "Cadastros &gt; Usuários".
+                <br /> (Verificação de senha simulada para este protótipo)
             </p>
           </CardFooter>
         </form>

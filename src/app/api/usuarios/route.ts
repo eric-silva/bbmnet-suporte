@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
     }
     const data = parsed.data;
 
-    // Check for email uniqueness
     const existingUser = await prisma.usuario.findUnique({
       where: { email: data.email },
     });
@@ -53,17 +52,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Este e-mail já está em uso.' }, { status: 409 }); // 409 Conflict
     }
 
-    // In a real app, hash the password here before saving
-    // const hashedPassword = await hashPassword(data.password);
-    const hashedPassword = `mock_not_hashed_${data.password}`; // MOCK: Storing plain for prototype
+    // SIMULATED HASHING - NOT FOR PRODUCTION
+    const hashedPassword = `mock_hashed_${data.password}`; 
 
     const newUsuario = await prisma.usuario.create({
       data: {
         nome: data.nome,
         email: data.email,
-        hashedPassword: hashedPassword, // Store the "hashed" password
+        hashedPassword: hashedPassword, 
         fotoUrl: data.fotoUrl,
-        isAtivo: true, // Explicitly set to active on creation
+        isAtivo: true, 
       },
     });
 

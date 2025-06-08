@@ -5,18 +5,18 @@ import type { ReactNode } from 'react';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { LifeBuoy } from 'lucide-react';
-// MOCK_CUSTOM_USER_CREDENTIALS and MOCK_CUSTOM_USER_SESSION_DATA are removed from constants
 
 interface SessionUser {
-  name?: string | null;
-  email?: string | null;
-  id?: string | null;
+  id: string; // id is now mandatory
+  nome?: string | null;
+  email: string; // email is now mandatory
 }
 
 interface Session {
   user: SessionUser | null;
+  token: string | null;
   status: 'authenticated' | 'unauthenticated' | 'loading';
-  error?: string | null; // For login errors
+  error?: string | null;
 }
 
 interface SessionContextType {
@@ -29,22 +29,24 @@ interface SessionContextType {
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<Session>({ user: null, status: 'loading' });
+  const [session, setSession] = useState<Session>({ user: null, token: null, status: 'loading' });
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    const storedUserString = localStorage.getItem('mockUserSession');
-    if (storedUserString) {
+    const storedUserString = localStorage.getItem('sessionUser');
+    const storedToken = localStorage.getItem('sessionToken');
+    if (storedUserString && storedToken) {
       try {
         const parsedUser = JSON.parse(storedUserString);
-        setSession({ user: parsedUser, status: 'authenticated' });
+        setSession({ user: parsedUser, token: storedToken, status: 'authenticated' });
       } catch (e) {
-        localStorage.removeItem('mockUserSession');
-        setSession({ user: null, status: 'unauthenticated' });
+        localStorage.removeItem('sessionUser');
+        localStorage.removeItem('sessionToken');
+        setSession({ user: null, token: null, status: 'unauthenticated' });
       }
     } else {
-      setSession({ user: null, status: 'unauthenticated' });
+      setSession({ user: null, token: null, status: 'unauthenticated' });
     }
   }, []);
 
@@ -61,43 +63,53 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
     
     if (!email || !password) {
         const errorMsg = "E-mail e senha são obrigatórios.";
-        setSession({ user: null, status: 'unauthenticated', error: errorMsg });
+        setSession({ user: null, token: null, status: 'unauthenticated', error: errorMsg });
         return { success: false, error: errorMsg };
     }
 
     try {
-      const response = await fetch('/api/auth/mock-login', {
+      const response = await fetch('/api/auth/login', { // Updated endpoint
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }), // Password sent but ignored by mock API
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         const errorMsg = data.message || `Falha no login (status: ${response.status})`;
-        setSession({ user: null, status: 'unauthenticated', error: errorMsg });
-        localStorage.removeItem('mockUserSession');
+        setSession({ user: null, token: null, status: 'unauthenticated', error: errorMsg });
+        localStorage.removeItem('sessionUser');
+        localStorage.removeItem('sessionToken');
         return { success: false, error: errorMsg };
       }
       
-      // data should be { id, name, email } from the API
+      const { user: loggedInUser, token: sessionToken } = data;
+      
+      if (!loggedInUser || !sessionToken || !loggedInUser.id || !loggedInUser.email) {
+        const errorMsg = "Resposta inválida do servidor de autenticação.";
+        setSession({ user: null, token: null, status: 'unauthenticated', error: errorMsg });
+        return { success: false, error: errorMsg };
+      }
+      
       const userToStore: SessionUser = {
-        id: data.id,
-        name: data.name,
-        email: data.email,
+        id: loggedInUser.id,
+        name: loggedInUser.nome,
+        email: loggedInUser.email,
       };
-      localStorage.setItem('mockUserSession', JSON.stringify(userToStore));
-      setSession({ user: userToStore, status: 'authenticated' });
+      localStorage.setItem('sessionUser', JSON.stringify(userToStore));
+      localStorage.setItem('sessionToken', sessionToken);
+      setSession({ user: userToStore, token: sessionToken, status: 'authenticated' });
       return { success: true };
 
     } catch (error) {
       console.error("Sign in error:", error);
       const errorMsg = "Ocorreu um erro de rede ou inesperado durante o login.";
-      setSession({ user: null, status: 'unauthenticated', error: errorMsg });
-      localStorage.removeItem('mockUserSession');
+      setSession({ user: null, token: null, status: 'unauthenticated', error: errorMsg });
+      localStorage.removeItem('sessionUser');
+      localStorage.removeItem('sessionToken');
       return { success: false, error: errorMsg };
     }
   };
@@ -105,25 +117,29 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
   const signOut = async () => {
     setSession(prev => ({ ...prev, status: 'loading', error: null }));
     await new Promise(resolve => setTimeout(resolve, 300)); 
-    localStorage.removeItem('mockUserSession');
-    setSession({ user: null, status: 'unauthenticated' });
+    localStorage.removeItem('sessionUser');
+    localStorage.removeItem('sessionToken');
+    setSession({ user: null, token: null, status: 'unauthenticated' });
     router.push('/'); 
   };
 
   const getAuthHeaders = useCallback((): Record<string, string> => {
-    const storedUserString = localStorage.getItem('mockUserSession');
+    const storedToken = localStorage.getItem('sessionToken');
+    const storedUserString = localStorage.getItem('sessionUser');
+    let headers: Record<string, string> = {};
+
+    if (storedToken) {
+      headers['Authorization'] = `Bearer ${storedToken}`;
+    }
     if (storedUserString) {
       try {
         const parsedUser = JSON.parse(storedUserString) as SessionUser;
         if (parsedUser.email) {
-          // For middleware and backend API calls to identify the user
-          return { 'X-Authenticated-User-Email': parsedUser.email };
+          headers['X-Authenticated-User-Email'] = parsedUser.email;
         }
-      } catch (e) {
-        // Ignore error, return empty headers
-      }
+      } catch (e) { /* Ignore */ }
     }
-    return {};
+    return headers;
   }, []);
 
 
