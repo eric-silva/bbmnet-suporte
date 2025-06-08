@@ -72,11 +72,6 @@ export default function HomePage() {
             <CardTitle className="text-3xl font-bold font-headline text-primary">
               BBMNET Suporte
             </CardTitle>
-            <CardDescription className="text-lg">
-              Acesse sua conta para gerenciar os tickets.
-              Use um e-mail cadastrado em "Cadastros {'>'} Usuários".
-              A senha é "registrada" mas não verificada neste protótipo.
-            </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <CardContent className="space-y-4">
