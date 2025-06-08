@@ -23,7 +23,6 @@ export function UserNav() {
   const handleSignOut = async () => {
     setIsSigningOut(true);
     await signOut();
-    // O AppProviders cuidará do redirecionamento.
   };
 
   if (session.status === 'loading') {
@@ -35,19 +34,20 @@ export function UserNav() {
   }
 
   if (session.status !== 'authenticated' || !session.user) {
-    return null; // Ou um botão de login, dependendo do design
+    return null;
   }
 
-  const { name, email } = session.user;
-  const image = null; // Placeholder, imagem do usuário não está no mock simples
-  const fallbackName = name ? name.charAt(0).toUpperCase() : (email ? email.charAt(0).toUpperCase() : <UserCircle />);
+  const { name, email, fotoUrl } = session.user; // Get fotoUrl from session
+  const fallbackName = name ? name.charAt(0).toUpperCase() : (email ? email.charAt(0).toUpperCase() : <UserCircle className="h-5 w-5"/>);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border">
-            {image && <AvatarImage src={image} alt={name || email || 'Avatar do usuário'} />}
+            {fotoUrl ? (
+              <AvatarImage src={fotoUrl} alt={name || email || 'Avatar do usuário'} />
+            ) : null}
             <AvatarFallback>{fallbackName}</AvatarFallback>
           </Avatar>
         </Button>

@@ -50,15 +50,16 @@ export async function POST(request: NextRequest) {
     }
 
     const token = jwt.sign(
-      { userId: user.id, email: user.email, name: user.nome },
+      { userId: user.id, email: user.email, name: user.nome, fotoUrl: user.fotoUrl }, // Added fotoUrl to JWT payload
       process.env.JWT_SECRET,
       { expiresIn: '1h' } // Token expires in 1 hour
     );
 
+    // Ensure fotoUrl is included in the response user object
     const { hashedPassword: _, ...userWithoutPassword } = user;
 
     return NextResponse.json({
-      user: userWithoutPassword,
+      user: userWithoutPassword, // This will now include fotoUrl from the user model
       token: token,
     });
 

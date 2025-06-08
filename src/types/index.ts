@@ -19,68 +19,68 @@ export interface Usuario {
   hashedPassword?: string | null;
   fotoUrl?: string | null;
   isAtivo: boolean;
-  createdAt: string; 
-  updatedAt: string; 
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Ticket {
   id: string;
   numeroTicket: string;
   problemDescription: string;
-  
+
   prioridadeId: string;
-  prioridade: Prioridade; 
+  prioridade: Prioridade;
 
   tipoId: string;
-  tipo: Tipo; 
+  tipo: Tipo;
 
   ambienteId: string;
-  ambiente: Ambiente; 
+  ambiente: Ambiente;
 
   origemId: string;
-  origem: Origem; 
+  origem: Origem;
 
   solicitanteId: string;
-  solicitante: Usuario; 
+  solicitante: Usuario;
 
   responsavelId?: string | null;
-  responsavel?: Usuario | null; 
+  responsavel?: Usuario | null;
 
   evidencias: string;
   anexos?: string | null;
-  inicioAtendimento?: string | null; 
-  terminoAtendimento?: string | null; 
+  inicioAtendimento?: string | null;
+  terminoAtendimento?: string | null;
   resolutionDetails?: string | null;
 
   situacaoId: string;
-  situacao: Situacao; 
+  situacao: Situacao;
 
-  createdAt: string; 
-  updatedAt: string; 
+  createdAt: string;
+  updatedAt: string;
 }
 
 // For TicketForm Zod schema and API communication
 export interface TicketFormData {
   problemDescription: string;
-  priority: string; 
-  type: string;     
+  priority: string;
+  type: string;
   responsavelEmail?: string | null;
-  status?: string;   
+  status?: string;
   resolutionDetails?: string | null;
   evidencias: string;
   anexos?: string | null;
-  ambiente: string; 
-  origem: string;   
+  ambiente: string;
+  origem: string;
 }
 
 // For UsuarioForm Zod schema and API communication
 export interface UsuarioFormData {
   nome: string;
   email: string;
-  password?: string; // Added for creation
-  confirmPassword?: string; // Added for creation
-  fotoUrl?: string | null;
-  isAtivo?: boolean; // Optional in form, backend handles default for creation
+  password?: string;
+  confirmPassword?: string;
+  fotoUrl?: string | null; // Can be Base64 Data URI or null
+  isAtivo?: boolean;
 }
 
 
@@ -99,4 +99,3 @@ export interface MenuItem {
 export interface StructuredMenuItem extends MenuItem {
   subMenus: MenuItem[];
 }
-

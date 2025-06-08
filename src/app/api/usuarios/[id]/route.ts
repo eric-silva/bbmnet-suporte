@@ -7,7 +7,7 @@ import type { UsuarioFormData } from '@/types';
 const UpdateUsuarioApiSchema = z.object({
   nome: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.').optional(),
   email: z.string().email('Por favor, insira um e-mail válido.').optional(),
-  fotoUrl: z.string().url('URL da foto inválida.').optional().nullable(),
+  fotoUrl: z.string().optional().nullable().or(z.literal('')), // Allow Data URI or empty/null
   isAtivo: z.boolean().optional(),
 });
 
@@ -49,22 +49,23 @@ export async function PUT(
 
     if (data.email) {
       const existingUser = await prisma.usuario.findFirst({
-        where: { 
+        where: {
           email: data.email,
-          NOT: { id: params.id } // Exclude current user from check
+          NOT: { id: params.id }
         },
       });
       if (existingUser) {
         return NextResponse.json({ message: 'Este e-mail já está em uso por outro usuário.' }, { status: 409 });
       }
     }
-    
+
     const updatedUsuario = await prisma.usuario.update({
       where: { id: params.id },
       data: {
         ...(data.nome && { nome: data.nome }),
         ...(data.email && { email: data.email }),
-        ...(data.hasOwnProperty('fotoUrl') && { fotoUrl: data.fotoUrl }), // Check hasOwnProperty to allow setting null
+        // Only update fotoUrl if it's explicitly provided in the payload
+        ...(data.hasOwnProperty('fotoUrl') && { fotoUrl: data.fotoUrl === '' ? null : data.fotoUrl }),
         ...(typeof data.isAtivo === 'boolean' && { isAtivo: data.isAtivo }),
         updatedAt: new Date(),
       },
@@ -79,7 +80,7 @@ export async function PUT(
             errorMessage = 'Este e-mail já está cadastrado por outro usuário.';
             return NextResponse.json({ message: errorMessage }, { status: 409 });
         }
-         if ((error as any).code === 'P2025') { // Record to update not found
+         if ((error as any).code === 'P2025') {
             errorMessage = 'Usuário não encontrado para atualização.';
             return NextResponse.json({ message: errorMessage }, { status: 404 });
         }
@@ -94,14 +95,13 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Optional: Check for related tickets before deleting
     const ticketsCriados = await prisma.ticket.count({ where: { solicitanteId: params.id } });
     const ticketsAtribuidos = await prisma.ticket.count({ where: { responsavelId: params.id } });
 
     if (ticketsCriados > 0 || ticketsAtribuidos > 0) {
-      return NextResponse.json({ 
-        message: 'Este usuário não pode ser excluído pois está associado a tickets. Considere inativar o usuário em vez disso.' 
-      }, { status: 409 }); // 409 Conflict
+      return NextResponse.json({
+        message: 'Este usuário não pode ser excluído pois está associado a tickets. Considere inativar o usuário em vez disso.'
+      }, { status: 409 });
     }
 
     await prisma.usuario.delete({
@@ -113,7 +113,7 @@ export async function DELETE(
     console.error(`Falha ao excluir usuário ${params.id}:`, error);
     let errorMessage = `Ocorreu um erro inesperado ao excluir o usuário ${params.id}.`;
     if (error instanceof Error) {
-        if ((error as any).code === 'P2025') { // Record to delete not found
+        if ((error as any).code === 'P2025') {
              errorMessage = 'Usuário não encontrado para exclusão.';
             return NextResponse.json({ message: errorMessage }, { status: 404 });
         }

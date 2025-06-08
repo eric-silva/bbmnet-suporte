@@ -20,7 +20,7 @@ const CreateUsuarioApiSchema = z.object({
       return ALLOWED_DOMAINS.includes(domain);
     }, { message: `O domínio do e-mail não é permitido. Domínios aceitos: ${ALLOWED_DOMAINS.join(', ')}` }),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
-  fotoUrl: z.string().url('URL da foto inválida.').optional().nullable(),
+  fotoUrl: z.string().optional().nullable().or(z.literal('')), // Allow Data URI or empty/null
 });
 
 export async function GET(request: NextRequest) {
@@ -58,15 +58,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Este e-mail já está em uso.' }, { status: 409 });
     }
 
-    const hashedPassword = sha1(data.password); 
+    const hashedPassword = sha1(data.password);
 
     const newUsuario = await prisma.usuario.create({
       data: {
         nome: data.nome,
         email: data.email,
-        hashedPassword: hashedPassword, 
-        fotoUrl: data.fotoUrl,
-        isAtivo: true, 
+        hashedPassword: hashedPassword,
+        fotoUrl: data.fotoUrl || null, // Save Base64 or null
+        isAtivo: true,
       },
     });
 

@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useTransition } from 'react';
+import React, { useEffect, useTransition, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,13 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { Usuario, UsuarioFormData } from '@/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, UploadCloud, UserCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 const baseUsuarioFormSchema = z.object({
   nome: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
   email: z.string().email('Por favor, insira um e-mail válido.'),
-  fotoUrl: z.string().url('URL da foto inválida.').optional().nullable().or(z.literal('')),
+  fotoUrl: z.string().optional().nullable().or(z.literal('')), // Changed from .url() to allow Data URIs
   isAtivo: z.boolean().default(true).optional(),
 });
 
@@ -26,12 +27,10 @@ const createUsuarioFormSchema = baseUsuarioFormSchema.extend({
   confirmPassword: z.string().min(6, 'Confirme a senha.'),
 }).refine(data => data.password === data.confirmPassword, {
   message: "As senhas não coincidem.",
-  path: ["confirmPassword"], // path to show error under confirmPassword field
+  path: ["confirmPassword"],
 });
 
-// To ensure the form data matches what the API expects, especially for optional fields
 type FormValues = z.infer<typeof createUsuarioFormSchema>;
-
 
 interface UsuarioFormProps {
   usuario?: Usuario | null;
@@ -43,7 +42,9 @@ interface UsuarioFormProps {
 export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+
   const currentFormSchema = formMode === 'create' ? createUsuarioFormSchema : baseUsuarioFormSchema;
 
   const { register, handleSubmit, control, formState: { errors }, setValue, watch, reset } = useForm<FormValues>({
@@ -65,9 +66,11 @@ export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFo
         email: usuario.email,
         fotoUrl: usuario.fotoUrl || '',
         isAtivo: usuario.isAtivo,
-        password: '', // Not editing password here
-        confirmPassword: '', // Not editing password here
+        password: '',
+        confirmPassword: '',
       });
+      setImagePreview(usuario.fotoUrl || null);
+      setFileName(null);
     } else if (formMode === 'create') {
       reset({
         nome: '',
@@ -75,28 +78,68 @@ export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFo
         password: '',
         confirmPassword: '',
         fotoUrl: '',
-        isAtivo: true, 
+        isAtivo: true,
       });
+      setImagePreview(null);
+      setFileName(null);
     }
   }, [usuario, formMode, reset]);
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({
+          title: "Arquivo Muito Grande",
+          description: "Por favor, selecione uma imagem menor que 2MB.",
+          variant: "destructive",
+        });
+        event.target.value = ''; // Clear the input
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setImagePreview(result);
+        setValue('fotoUrl', result, { shouldValidate: true });
+        setFileName(file.name);
+      };
+      reader.onerror = () => {
+        toast({
+          title: "Erro ao Ler Arquivo",
+          description: "Não foi possível ler o arquivo de imagem.",
+          variant: "destructive",
+        });
+      }
+      reader.readAsDataURL(file);
+    } else {
+      // If no file is selected (e.g., user clears selection), reset to existing or null
+      const existingFotoUrl = formMode === 'edit' && usuario?.fotoUrl ? usuario.fotoUrl : null;
+      setImagePreview(existingFotoUrl);
+      setValue('fotoUrl', existingFotoUrl || '', { shouldValidate: true });
+      setFileName(null);
+    }
+  };
 
   const handleFormSubmit = (data: FormValues) => {
     startTransition(async () => {
       const dataToSend: UsuarioFormData = {
         nome: data.nome,
         email: data.email,
-        fotoUrl: data.fotoUrl || null,
+        fotoUrl: data.fotoUrl, // This will be the Base64 string from setValue or existing URL
         isAtivo: data.isAtivo,
       };
       if (formMode === 'create') {
-         dataToSend.isAtivo = true; 
-         dataToSend.password = data.password; // Password only for creation
+         dataToSend.isAtivo = true;
+         dataToSend.password = data.password;
       }
 
-      const result = await onSubmit(dataToSend, usuario?.id);
-      // Toast notifications are handled by the parent page (UsuariosPage)
+      await onSubmit(dataToSend, usuario?.id);
     });
   };
+
+  const currentImageSrc = imagePreview || (formMode === 'edit' && usuario?.fotoUrl) || null;
+
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)}>
@@ -110,6 +153,31 @@ export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFo
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="flex flex-col items-center space-y-3">
+            <div className="relative h-24 w-24 rounded-full overflow-hidden border-2 border-muted flex items-center justify-center bg-muted">
+              {currentImageSrc ? (
+                <Image src={currentImageSrc} alt="Foto do usuário" layout="fill" objectFit="cover" />
+              ) : (
+                <UserCircle className="h-16 w-16 text-muted-foreground" />
+              )}
+            </div>
+            <div className="w-full max-w-xs">
+              <Label htmlFor="fotoFile" className="sr-only">Carregar foto</Label>
+              <Input
+                id="fotoFile"
+                type="file"
+                accept="image/jpeg, image/png, image/gif, image/webp"
+                onChange={handleImageChange}
+                className="mt-1 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isPending}
+              />
+              {fileName && <p className="text-xs text-muted-foreground mt-1 text-center truncate">{fileName}</p>}
+              <Input type="hidden" {...register('fotoUrl')} />
+               {errors.fotoUrl && <p className="text-sm text-destructive mt-1">{errors.fotoUrl.message}</p>}
+            </div>
+          </div>
+
+
           <div>
             <Label htmlFor="nome">Nome <span className="text-destructive">*</span></Label>
             <Input
@@ -134,7 +202,7 @@ export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFo
             />
             {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
           </div>
-          
+
           {formMode === 'create' && (
             <>
               <div>
@@ -163,19 +231,6 @@ export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFo
               </div>
             </>
           )}
-          
-          <div>
-            <Label htmlFor="fotoUrl">URL da Foto</Label>
-            <Input
-              id="fotoUrl"
-              type="url"
-              {...register('fotoUrl')}
-              className="mt-1"
-              placeholder="https://exemplo.com/foto.jpg (opcional)"
-              disabled={isPending}
-            />
-            {errors.fotoUrl && <p className="text-sm text-destructive mt-1">{errors.fotoUrl.message}</p>}
-          </div>
 
           {formMode === 'edit' && (
             <div className="flex items-center space-x-2 mt-2">
@@ -185,7 +240,7 @@ export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFo
                 render={({ field }) => (
                     <Switch
                         id="isAtivo"
-                        checked={field.value === undefined ? true : field.value} // Ensure controlled component
+                        checked={field.value === undefined ? true : field.value}
                         onCheckedChange={field.onChange}
                         disabled={isPending}
                         aria-labelledby="isAtivo-label"
@@ -198,7 +253,6 @@ export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFo
             </div>
           )}
            {errors.isAtivo && <p className="text-sm text-destructive mt-1">{errors.isAtivo.message}</p>}
-
 
         </CardContent>
         <CardFooter className="flex justify-end gap-2 pt-6">

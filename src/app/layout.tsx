@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AppProviders } from '@/components/auth/AppProviders';
-import { AppHeader } from '@/components/layout/AppHeader';
+// AppHeader removed from here
 
 export const metadata: Metadata = {
   title: 'BBMNET Suporte',
@@ -25,7 +25,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AppProviders>
-          <AppHeader />          
+          {/* AppHeader will be rendered conditionally inside AppProviders */}
           {children}
           <Toaster />
         </AppProviders>

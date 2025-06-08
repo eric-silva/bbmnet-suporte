@@ -5,11 +5,13 @@ import type { ReactNode } from 'react';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { LifeBuoy } from 'lucide-react';
+import { AppHeader } from '@/components/layout/AppHeader'; // Import AppHeader
 
 interface SessionUser {
-  id: string; 
-  name?: string | null; // name changed from nome
-  email: string; 
+  id: string;
+  name?: string | null;
+  email: string;
+  fotoUrl?: string | null; // Added fotoUrl
 }
 
 interface Session {
@@ -39,8 +41,6 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
     if (storedUserString && storedToken) {
       try {
         const parsedUser: SessionUser = JSON.parse(storedUserString);
-        // Basic check if token might be expired - client side only, real check is server side
-        // For robust check, parse JWT locally or make a verify endpoint call
         setSession({ user: parsedUser, token: storedToken, status: 'authenticated' });
       } catch (e) {
         localStorage.removeItem('sessionUser');
@@ -62,7 +62,7 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const signIn = async (email?: string, password?: string): Promise<{ success: boolean, error?: string }> => {
     setSession(prev => ({ ...prev, status: 'loading', error: null }));
-    
+
     if (!email || !password) {
         const errorMsg = "E-mail e senha são obrigatórios.";
         setSession({ user: null, token: null, status: 'unauthenticated', error: errorMsg });
@@ -87,20 +87,20 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
         localStorage.removeItem('sessionToken');
         return { success: false, error: errorMsg };
       }
-      
+
       const { user: loggedInUser, token: sessionToken } = data;
-      
+
       if (!loggedInUser || !sessionToken || !loggedInUser.id || !loggedInUser.email) {
         const errorMsg = "Resposta inválida do servidor de autenticação.";
         setSession({ user: null, token: null, status: 'unauthenticated', error: errorMsg });
         return { success: false, error: errorMsg };
       }
-      
-      // User object from API now includes `nome`, map it to `name` if needed by SessionUser
+
       const userToStore: SessionUser = {
         id: loggedInUser.id,
-        name: loggedInUser.nome, // API returns `nome`, SessionUser expects `name`
+        name: loggedInUser.nome,
         email: loggedInUser.email,
+        fotoUrl: loggedInUser.fotoUrl, // Store fotoUrl
       };
       localStorage.setItem('sessionUser', JSON.stringify(userToStore));
       localStorage.setItem('sessionToken', sessionToken);
@@ -119,24 +119,32 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const signOut = async () => {
     setSession(prev => ({ ...prev, status: 'loading', error: null }));
-    await new Promise(resolve => setTimeout(resolve, 300)); 
+    await new Promise(resolve => setTimeout(resolve, 300));
     localStorage.removeItem('sessionUser');
     localStorage.removeItem('sessionToken');
     setSession({ user: null, token: null, status: 'unauthenticated' });
-    router.push('/'); 
+    router.push('/');
   };
 
   const getAuthHeaders = useCallback((): Record<string, string> => {
     const storedToken = localStorage.getItem('sessionToken');
+    const storedUserString = localStorage.getItem('sessionUser');
     let headers: Record<string, string> = {
-        'Content-Type': 'application/json', // Good default
+        'Content-Type': 'application/json',
     };
 
     if (storedToken) {
       headers['Authorization'] = `Bearer ${storedToken}`;
     }
-    // No longer explicitly sending X-Authenticated-User-Email from client
-    // as middleware will handle token verification and add user details to headers.
+    // User details are now set by middleware based on token, but client can still send for initial context if needed
+    if (storedUserString) {
+        try {
+            const user: SessionUser = JSON.parse(storedUserString);
+            if(user.email) headers['X-Authenticated-User-Email'] = user.email; // Retained for now, middleware is primary
+        } catch (e) {
+            console.warn("Could not parse sessionUser from localStorage in getAuthHeaders");
+        }
+    }
     return headers;
   }, []);
 
@@ -152,6 +160,7 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   return (
     <SessionContext.Provider value={{ session, signIn, signOut, getAuthHeaders }}>
+      {session.status === 'authenticated' && <AppHeader />}
       {children}
     </SessionContext.Provider>
   );
