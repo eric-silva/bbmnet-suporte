@@ -77,6 +77,8 @@ export interface TicketFormData {
 export interface UsuarioFormData {
   nome: string;
   email: string;
+  password?: string; // Added for creation
+  confirmPassword?: string; // Added for creation
   fotoUrl?: string | null;
   isAtivo?: boolean; // Optional in form, backend handles default for creation
 }

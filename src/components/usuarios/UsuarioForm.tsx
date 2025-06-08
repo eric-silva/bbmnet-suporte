@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useTransition } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -14,15 +14,23 @@ import type { Usuario, UsuarioFormData } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const usuarioFormSchema = z.object({
+const baseUsuarioFormSchema = z.object({
   nome: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
   email: z.string().email('Por favor, insira um e-mail válido.'),
   fotoUrl: z.string().url('URL da foto inválida.').optional().nullable().or(z.literal('')),
   isAtivo: z.boolean().default(true).optional(),
 });
 
+const createUsuarioFormSchema = baseUsuarioFormSchema.extend({
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
+  confirmPassword: z.string().min(6, 'Confirme a senha.'),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "As senhas não coincidem.",
+  path: ["confirmPassword"], // path to show error under confirmPassword field
+});
+
 // To ensure the form data matches what the API expects, especially for optional fields
-type FormValues = z.infer<typeof usuarioFormSchema>;
+type FormValues = z.infer<typeof createUsuarioFormSchema>;
 
 
 interface UsuarioFormProps {
@@ -36,11 +44,15 @@ export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFo
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   
+  const currentFormSchema = formMode === 'create' ? createUsuarioFormSchema : baseUsuarioFormSchema;
+
   const { register, handleSubmit, control, formState: { errors }, setValue, watch, reset } = useForm<FormValues>({
-    resolver: zodResolver(usuarioFormSchema),
+    resolver: zodResolver(currentFormSchema),
     defaultValues: {
       nome: '',
       email: '',
+      password: '',
+      confirmPassword: '',
       fotoUrl: '',
       isAtivo: true,
     },
@@ -53,30 +65,33 @@ export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFo
         email: usuario.email,
         fotoUrl: usuario.fotoUrl || '',
         isAtivo: usuario.isAtivo,
+        password: '', // Not editing password here
+        confirmPassword: '', // Not editing password here
       });
     } else if (formMode === 'create') {
       reset({
         nome: '',
         email: '',
+        password: '',
+        confirmPassword: '',
         fotoUrl: '',
-        isAtivo: true, // Default for new users
+        isAtivo: true, 
       });
     }
   }, [usuario, formMode, reset]);
 
   const handleFormSubmit = (data: FormValues) => {
     startTransition(async () => {
-      // Ensure isAtivo is explicitly sent, even if undefined from form (though schema defaults it)
       const dataToSend: UsuarioFormData = {
         nome: data.nome,
         email: data.email,
-        fotoUrl: data.fotoUrl || null, // API expects null for empty optional URL
+        fotoUrl: data.fotoUrl || null,
         isAtivo: data.isAtivo,
       };
       if (formMode === 'create') {
-         dataToSend.isAtivo = true; // Ensure active on creation if not specified
+         dataToSend.isAtivo = true; 
+         dataToSend.password = data.password; // Password only for creation
       }
-
 
       const result = await onSubmit(dataToSend, usuario?.id);
       // Toast notifications are handled by the parent page (UsuariosPage)
@@ -120,6 +135,35 @@ export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFo
             {errors.email && <p className="text-sm text-destructive mt-1">{errors.email.message}</p>}
           </div>
           
+          {formMode === 'create' && (
+            <>
+              <div>
+                <Label htmlFor="password">Senha <span className="text-destructive">*</span></Label>
+                <Input
+                  id="password"
+                  type="password"
+                  {...register('password')}
+                  className="mt-1"
+                  placeholder="Mínimo 6 caracteres"
+                  disabled={isPending}
+                />
+                {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="confirmPassword">Confirmar Senha <span className="text-destructive">*</span></Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  {...register('confirmPassword')}
+                  className="mt-1"
+                  placeholder="Repita a senha"
+                  disabled={isPending}
+                />
+                {errors.confirmPassword && <p className="text-sm text-destructive mt-1">{errors.confirmPassword.message}</p>}
+              </div>
+            </>
+          )}
+          
           <div>
             <Label htmlFor="fotoUrl">URL da Foto</Label>
             <Input
@@ -141,7 +185,7 @@ export function UsuarioForm({ usuario, onSubmit, onCancel, formMode }: UsuarioFo
                 render={({ field }) => (
                     <Switch
                         id="isAtivo"
-                        checked={field.value}
+                        checked={field.value === undefined ? true : field.value} // Ensure controlled component
                         onCheckedChange={field.onChange}
                         disabled={isPending}
                         aria-labelledby="isAtivo-label"

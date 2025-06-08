@@ -115,7 +115,7 @@ export default function HomePage() {
             )}
              <p className="mt-6 text-xs text-muted-foreground text-center">
                 Use um e-mail cadastrado em "Cadastros &gt; Usuários".
-                <br /> (Senha não verificada neste protótipo)
+                <br /> (Senha registrada, mas não verificada neste protótipo)
             </p>
           </CardFooter>
         </form>
