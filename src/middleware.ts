@@ -1,26 +1,43 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
 
-// This is a conceptual middleware for the "more real" mock login.
-// It checks for a Bearer token.
+interface DecodedToken {
+  userId: string;
+  email: string;
+  name: string;
+  iat: number;
+  exp: number;
+}
+
 async function authenticateRequest(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
-  const userEmailHeader = request.headers.get('X-Authenticated-User-Email'); // Still useful for identifying user
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7); // Remove "Bearer "
-    // SIMULATED TOKEN VALIDATION - NOT FOR PRODUCTION
-    // In a real app, you'd verify the JWT signature, check expiry, etc.
-    // For this mock, just checking if token exists and looks like our simulated token.
-    if (token.startsWith('simulated-token-')) {
-      // If we needed to derive user from token, this is where it'd happen.
-      // For now, if token is present and looks okay, and X-Authenticated-User-Email is also present,
-      // we'll consider it "authenticated" for API protection.
-      return { isAuthenticated: true, userEmail: userEmailHeader };
+    
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not configured on the server.');
+      return { isAuthenticated: false, error: 'Server configuration error', status: 500 };
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
+      // Token is valid, `decoded` contains the payload
+      return { isAuthenticated: true, user: decoded };
+    } catch (err) {
+      // Token is invalid (expired, wrong signature, etc.)
+      let message = 'Invalid or expired token.';
+      if (err instanceof jwt.TokenExpiredError) {
+        message = 'Token expired.';
+      } else if (err instanceof jwt.JsonWebTokenError) {
+        message = 'Invalid token.';
+      }
+      return { isAuthenticated: false, error: message, status: 401 };
     }
   }
-  return { isAuthenticated: false, userEmail: null };
+  return { isAuthenticated: false, error: 'Authorization header missing or malformed.', status: 401 };
 }
 
 export async function middleware(request: NextRequest) {
@@ -28,16 +45,14 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith('/api/')) {
     const publicApiRoutes = [
-      '/api/auth/login', // New public login route
-      // Keep other meta routes public if they don't require strict auth yet
-      // or if they are used by the login page itself before auth.
-      '/api/meta/assignees', 
-      '/api/meta/environments',
-      '/api/meta/origins',
-      '/api/meta/priorities',
-      '/api/meta/situacoes',
-      '/api/meta/tipos',
-      '/api/ai/suggest-assignee' 
+      '/api/auth/login', 
+      // '/api/meta/assignees', // Consider if these truly need to be public without any auth
+      // '/api/meta/environments',
+      // '/api/meta/origins',
+      // '/api/meta/priorities',
+      // '/api/meta/situacoes',
+      // '/api/meta/tipos',
+      // '/api/ai/suggest-assignee' // Could also be protected
     ];
 
     if (publicApiRoutes.some(route => pathname.startsWith(route))) {
@@ -45,24 +60,19 @@ export async function middleware(request: NextRequest) {
     }
 
     const authResult = await authenticateRequest(request);
-    if (!authResult.isAuthenticated || !authResult.userEmail) {
-      // More specific error if token was there but X-Authenticated-User-Email was missing.
-      let message = 'Authentication required. Missing or invalid token.';
-      if (authHeader && authHeader.startsWith('Bearer ') && !authResult.userEmail) {
-        message = 'Authentication token present, but user email header missing.'
-      }
-
-      return new NextResponse(JSON.stringify({ message }), {
-        status: 401,
+    if (!authResult.isAuthenticated || !authResult.user) {
+      return new NextResponse(JSON.stringify({ message: authResult.error || 'Authentication required.' }), {
+        status: authResult.status || 401,
         headers: { 'Content-Type': 'application/json' },
       });
     }
     
-    // Forward necessary headers
+    // Token is valid, add user details from token to request headers
+    // so downstream API routes can access them easily.
     const requestHeaders = new Headers(request.headers);
-    // X-Authenticated-User-Email should already be set by client's getAuthHeaders
-    // based on successful login and stored session.
-    // Middleware just ensures it's present for protected routes along with a valid token.
+    requestHeaders.set('X-User-Id', authResult.user.userId);
+    requestHeaders.set('X-User-Email', authResult.user.email);
+    requestHeaders.set('X-User-Name', authResult.user.name);
 
     return NextResponse.next({
         request: {
@@ -75,7 +85,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Ensure this matcher covers all API routes you want to protect,
-  // excluding the public ones handled above.
   matcher: ['/api/:path*'], 
 };

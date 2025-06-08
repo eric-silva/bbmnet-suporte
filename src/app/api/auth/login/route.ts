@@ -1,9 +1,15 @@
 
+'use server';
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-// In a real app, you'd use a library like jsonwebtoken
-// For this example, we'll create a very simple placeholder token
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+
+function sha1(data: string): string {
+  return crypto.createHash('sha1').update(data).digest('hex');
+}
 
 const LoginRequestSchema = z.object({
   email: z.string().email({ message: "E-mail inválido." }),
@@ -33,17 +39,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: 'Este usuário está inativo. Entre em contato com o administrador.' }, { status: 403 });
     }
 
-    // SIMULATED PASSWORD VERIFICATION - NOT FOR PRODUCTION
-    const expectedHashedPassword = `mock_hashed_${password}`;
-    if (user.hashedPassword !== expectedHashedPassword) {
+    const hashedPassword = sha1(password);
+    if (user.hashedPassword !== hashedPassword) {
       return NextResponse.json({ message: 'Senha inválida.' }, { status: 401 });
     }
 
-    // SIMULATED TOKEN GENERATION - NOT FOR PRODUCTION
-    // In a real app, use JWTs signed with a secret key.
-    const token = `simulated-token-${user.id}-${Date.now()}`;
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET not configured in .env file");
+      return NextResponse.json({ message: 'Erro de configuração do servidor.' }, { status: 500 });
+    }
 
-    const { hashedPassword, ...userWithoutPassword } = user;
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, name: user.nome },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' } // Token expires in 1 hour
+    );
+
+    const { hashedPassword: _, ...userWithoutPassword } = user;
 
     return NextResponse.json({
       user: userWithoutPassword,

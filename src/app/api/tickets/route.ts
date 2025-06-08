@@ -1,4 +1,6 @@
 
+'use server';
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -13,7 +15,6 @@ const TicketApiSchema = z.object({
   anexos: z.string().optional().nullable(),
   ambiente: z.string().min(1, "Ambiente é obrigatória."),
   origem: z.string().min(1, "Origem é obrigatória."),
-  // status is handled by default on creation ("Para fazer")
 });
 
 async function getNextTicketNumber(): Promise<string> {
@@ -39,6 +40,10 @@ async function getNextTicketNumber(): Promise<string> {
 
 export async function GET(request: NextRequest) {
   try {
+    // User info is now in headers from middleware
+    // const userId = request.headers.get('X-User-Id');
+    // if (!userId) return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
+    
     const tickets = await prisma.ticket.findMany({
       orderBy: {
         createdAt: 'desc',
@@ -74,9 +79,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authenticatedUserEmail = request.headers.get('X-Authenticated-User-Email');
-    if (!authenticatedUserEmail) {
-        return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
+    const solicitanteIdFromToken = request.headers.get('X-User-Id');
+    const solicitanteEmailFromToken = request.headers.get('X-User-Email');
+    const solicitanteNameFromToken = request.headers.get('X-User-Name');
+
+    if (!solicitanteIdFromToken || !solicitanteEmailFromToken) {
+        return NextResponse.json({ message: 'Authentication required: User details not found in token.' }, { status: 401 });
     }
 
     const body = await request.json(); 
@@ -86,17 +94,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Invalid input', errors: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
     const data = parsed.data;
+    
+    // Solicitante is now directly from token, ensure the user exists or handle as needed.
+    // For simplicity, we assume middleware validated the user, so we connect by ID.
+    // If the user might not exist in DB (e.g. token from external system), upsert logic might be needed.
+    // Here, we directly use the ID from the token.
+    const solicitanteConnect = { connect: { id: solicitanteIdFromToken } };
 
-    // Upsert solicitante based on authenticated user's email
-    const solicitante = await prisma.usuario.upsert({
-      where: { email: authenticatedUserEmail },
-      update: {}, // No updates to name here, assuming it's managed elsewhere or set on first creation
-      create: {
-        email: authenticatedUserEmail,
-        nome: authenticatedUserEmail.split('@')[0] || "Usuário do Sistema", // Default name from email
-        // hashedPassword will be null or managed by a separate user registration flow
-      },
-    });
 
     let responsavelConnect = undefined;
     if (data.responsavelEmail && data.responsavelEmail !== '') {
@@ -104,11 +108,10 @@ export async function POST(request: NextRequest) {
                                  { email: data.responsavelEmail, name: data.responsavelEmail.split('@')[0] };
       const responsavel = await prisma.usuario.upsert({
         where: { email: data.responsavelEmail },
-        update: { nome: responsavelDetails.name }, // Ensure name is also updated if user exists
+        update: { nome: responsavelDetails.name },
         create: {
           email: data.responsavelEmail,
           nome: responsavelDetails.name,
-          // hashedPassword will be null or managed by a separate user registration flow
         },
       });
       responsavelConnect = { connect: { id: responsavel.id } };
@@ -142,7 +145,7 @@ export async function POST(request: NextRequest) {
         tipo: { connect: { id: tipoRecord!.id } },
         ambiente: { connect: { id: ambienteRecord!.id } },
         origem: { connect: { id: origemRecord!.id } },
-        solicitante: { connect: { id: solicitante.id } },
+        solicitante: solicitanteConnect,
         responsavel: responsavelConnect,
         situacao: { connect: { id: situacaoRecord!.id } }, 
         evidencias: data.evidencias,

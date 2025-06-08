@@ -7,9 +7,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import { LifeBuoy } from 'lucide-react';
 
 interface SessionUser {
-  id: string; // id is now mandatory
-  nome?: string | null;
-  email: string; // email is now mandatory
+  id: string; 
+  name?: string | null; // name changed from nome
+  email: string; 
 }
 
 interface Session {
@@ -38,7 +38,9 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
     const storedToken = localStorage.getItem('sessionToken');
     if (storedUserString && storedToken) {
       try {
-        const parsedUser = JSON.parse(storedUserString);
+        const parsedUser: SessionUser = JSON.parse(storedUserString);
+        // Basic check if token might be expired - client side only, real check is server side
+        // For robust check, parse JWT locally or make a verify endpoint call
         setSession({ user: parsedUser, token: storedToken, status: 'authenticated' });
       } catch (e) {
         localStorage.removeItem('sessionUser');
@@ -68,7 +70,7 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
 
     try {
-      const response = await fetch('/api/auth/login', { // Updated endpoint
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,9 +96,10 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
         return { success: false, error: errorMsg };
       }
       
+      // User object from API now includes `nome`, map it to `name` if needed by SessionUser
       const userToStore: SessionUser = {
         id: loggedInUser.id,
-        name: loggedInUser.nome,
+        name: loggedInUser.nome, // API returns `nome`, SessionUser expects `name`
         email: loggedInUser.email,
       };
       localStorage.setItem('sessionUser', JSON.stringify(userToStore));
@@ -125,20 +128,15 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const getAuthHeaders = useCallback((): Record<string, string> => {
     const storedToken = localStorage.getItem('sessionToken');
-    const storedUserString = localStorage.getItem('sessionUser');
-    let headers: Record<string, string> = {};
+    let headers: Record<string, string> = {
+        'Content-Type': 'application/json', // Good default
+    };
 
     if (storedToken) {
       headers['Authorization'] = `Bearer ${storedToken}`;
     }
-    if (storedUserString) {
-      try {
-        const parsedUser = JSON.parse(storedUserString) as SessionUser;
-        if (parsedUser.email) {
-          headers['X-Authenticated-User-Email'] = parsedUser.email;
-        }
-      } catch (e) { /* Ignore */ }
-    }
+    // No longer explicitly sending X-Authenticated-User-Email from client
+    // as middleware will handle token verification and add user details to headers.
     return headers;
   }, []);
 

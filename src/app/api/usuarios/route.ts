@@ -1,9 +1,16 @@
 
+'use server';
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import type { UsuarioFormData } from '@/types';
 import { ALLOWED_DOMAINS } from '@/lib/constants';
+import crypto from 'crypto';
+
+function sha1(data: string): string {
+  return crypto.createHash('sha1').update(data).digest('hex');
+}
 
 const CreateUsuarioApiSchema = z.object({
   nome: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
@@ -14,7 +21,6 @@ const CreateUsuarioApiSchema = z.object({
     }, { message: `O domínio do e-mail não é permitido. Domínios aceitos: ${ALLOWED_DOMAINS.join(', ')}` }),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres.'),
   fotoUrl: z.string().url('URL da foto inválida.').optional().nullable(),
-  // isAtivo will default to true via Prisma schema, or explicitly set
 });
 
 export async function GET(request: NextRequest) {
@@ -49,11 +55,10 @@ export async function POST(request: NextRequest) {
       where: { email: data.email },
     });
     if (existingUser) {
-      return NextResponse.json({ message: 'Este e-mail já está em uso.' }, { status: 409 }); // 409 Conflict
+      return NextResponse.json({ message: 'Este e-mail já está em uso.' }, { status: 409 });
     }
 
-    // SIMULATED HASHING - NOT FOR PRODUCTION
-    const hashedPassword = `mock_hashed_${data.password}`; 
+    const hashedPassword = sha1(data.password); 
 
     const newUsuario = await prisma.usuario.create({
       data: {
@@ -65,7 +70,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Do not return hashedPassword
     const { hashedPassword: _, ...userWithoutPassword } = newUsuario;
     return NextResponse.json(userWithoutPassword, { status: 201 });
 
