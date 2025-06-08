@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import { SignJWT } from 'jose';
 
 function sha1(data: string): string {
   return crypto.createHash('sha1').update(data).digest('hex');
@@ -49,19 +50,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Erro de configuração do servidor.' }, { status: 500 });
     }
 
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, name: user.nome, fotoUrl: user.fotoUrl }, // Added fotoUrl to JWT payload
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' } // Token expires in 1 hour
-    );
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+      const token = await new SignJWT(user)
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('2h')
+        .sign(secret);
 
-    // Ensure fotoUrl is included in the response user object
-    const { hashedPassword: _, ...userWithoutPassword } = user;
+      return new Response(JSON.stringify({ token }), { status: 200 });
 
-    return NextResponse.json({
-      user: userWithoutPassword, // This will now include fotoUrl from the user model
-      token: token,
-    });
+    // const token = jwt.sign(
+    //   { userId: user.id, email: user.email, name: user.nome, fotoUrl: user.fotoUrl }, // Added fotoUrl to JWT payload
+    //   process.env.JWT_SECRET,
+    //   { expiresIn: '1h' } // Token expires in 1 hour
+    // );
+
+    // // Ensure fotoUrl is included in the response user object
+    // const { hashedPassword: _, ...userWithoutPassword } = user;
+
+    // return NextResponse.json({
+    //   user: userWithoutPassword, // This will now include fotoUrl from the user model
+    //   token: token,
+    // });
 
   } catch (error) {
     console.error('Error in login API:', error);

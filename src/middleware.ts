@@ -1,47 +1,50 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import type { JwtPayload } from 'jsonwebtoken';
+import { jwtVerify } from 'jose';
 
-interface DecodedToken extends JwtPayload {
+interface DecodedToken {
   userId: string;
   email: string;
   name: string;
+  [key: string]: any;
 }
 
 async function authenticateAndEnrichRequest(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7); // Remove "Bearer "
-    
+    const token = authHeader.substring(7);
+
     if (!process.env.JWT_SECRET) {
       console.error('CRITICAL: JWT_SECRET is not configured on the server (middleware). Cannot verify tokens.');
       return { isAuthenticated: false, error: 'Server configuration error: JWT secret missing.', status: 500, headers: request.headers };
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
-      // Token is valid, add user details to request headers
-      const enrichedHeaders = new Headers(request.headers);
-      enrichedHeaders.set('X-User-Id', decoded.userId);
-      enrichedHeaders.set('X-User-Email', decoded.email);
-      enrichedHeaders.set('X-User-Name', decoded.name);
-      return { isAuthenticated: true, user: decoded, headers: enrichedHeaders };
-    } catch (err) {
-      console.error('Token verification failed in middleware:', err); 
-      let clientErrorMessage = 'Authentication failed: Invalid or expired token.'; 
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+      const { payload } = await jwtVerify(token, secret);
 
-      if (err instanceof jwt.TokenExpiredError) {
+      if (
+        !payload ||
+        typeof payload !== 'object' ||
+        !payload.userId ||
+        !payload.email ||
+        !payload.name
+      ) {
+        throw new Error('Invalid token payload: missing required fields');
+      }
+
+      const enrichedHeaders = new Headers(request.headers);
+      enrichedHeaders.set('X-User-Id', String(payload.userId));
+      enrichedHeaders.set('X-User-Email', String(payload.email));
+      enrichedHeaders.set('X-User-Name', String(payload.name));
+      return { isAuthenticated: true, user: payload, headers: enrichedHeaders };
+    } catch (err: any) {
+      console.error('Token verification failed in middleware:', err);
+      let clientErrorMessage = 'Authentication failed: Invalid or expired token.';
+      if (err.code === 'ERR_JWT_EXPIRED') {
         clientErrorMessage = 'Authentication failed: Token has expired.';
-      } else if (err instanceof jwt.JsonWebTokenError) {
-        clientErrorMessage = `Authentication failed: Invalid token (${(err as jwt.JsonWebTokenError).message}).`;
-        if ((err as jwt.JsonWebTokenError).message.includes('invalid signature')) {
-            console.error("CRITICAL: JWT signature is invalid. This strongly suggests the JWT_SECRET in .env is mismatched or incorrect between token signing (login API) and verification (middleware). Please verify .env and restart the server.");
-        } else if ((err as jwt.JsonWebTokenError).message.includes('jwt secret is required')) {
-             console.error("CRITICAL: JWT_SECRET was present at the check but seems to be missing or invalid for jwt.verify. This is highly unusual. Check .env and server restart.");
-        }
       }
       return { isAuthenticated: false, error: clientErrorMessage, status: 401, headers: request.headers };
     }
