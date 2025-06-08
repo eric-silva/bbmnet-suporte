@@ -113,10 +113,6 @@ export default function HomePage() {
             {session.error && (
                 <p className="mt-3 text-sm text-center text-destructive">{session.error}</p>
             )}
-             <p className="mt-6 text-xs text-muted-foreground text-center">
-                Use um e-mail e senha cadastrados em "Cadastros &gt; Usuários".
-                <br /> (Verificação de senha simulada para este protótipo)
-            </p>
           </CardFooter>
         </form>
       </Card>
