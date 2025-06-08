@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AppProviders } from '@/components/auth/AppProviders';
+import { AppHeader } from '@/components/layout/AppHeader';
 
 export const metadata: Metadata = {
   title: 'BBMNET Suporte',
@@ -24,6 +25,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AppProviders>
+          <AppHeader />          
           {children}
           <Toaster />
         </AppProviders>

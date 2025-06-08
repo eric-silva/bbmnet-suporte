@@ -44,9 +44,9 @@ export default function TicketsLayout({
   // session.status === 'authenticated'
   return (
     <div className="flex min-h-screen flex-col">
-      <div className="app-header-print-hide">
+      {/* <div className="app-header-print-hide">
         <AppHeader />
-      </div>
+      </div> */}
       <main className="flex-1">
         {children}
       </main>
