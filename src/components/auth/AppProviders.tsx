@@ -6,6 +6,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useRouter, usePathname } from 'next/navigation';
 import { LifeBuoy } from 'lucide-react';
 import { AppHeader } from '@/components/layout/AppHeader'; // Import AppHeader
+import { sha1Convert } from '@/lib/utils';
 
 interface SessionUser {
   id: string;
@@ -70,12 +71,13 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
 
     try {
+      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password: password }),
       });
 
       const data = await response.json();
@@ -85,6 +87,12 @@ const AuthManager: React.FC<{ children: ReactNode }> = ({ children }) => {
         setSession({ user: null, token: null, status: 'unauthenticated', error: errorMsg });
         localStorage.removeItem('sessionUser');
         localStorage.removeItem('sessionToken');
+        return { success: false, error: errorMsg };
+      }
+
+      if (!data || typeof data !== 'object' || !data.user || !data.token) {
+        const errorMsg = "Resposta inválida do servidor de autenticação.";
+        setSession({ user: null, token: null, status: 'unauthenticated', error: errorMsg });
         return { success: false, error: errorMsg };
       }
 

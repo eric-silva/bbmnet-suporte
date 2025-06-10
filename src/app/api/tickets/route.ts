@@ -108,10 +108,10 @@ export async function POST(request: NextRequest) {
                                  { email: data.responsavelEmail, name: data.responsavelEmail.split('@')[0] };
       const responsavel = await prisma.usuario.upsert({
         where: { email: data.responsavelEmail },
-        update: { nome: responsavelDetails.name },
+        update: { nome: responsavelDetails.email },
         create: {
           email: data.responsavelEmail,
-          nome: responsavelDetails.name,
+          nome: responsavelDetails.email,
         },
       });
       responsavelConnect = { connect: { id: responsavel.id } };
