@@ -15,7 +15,7 @@ export function TicketStatusBadge({ statusDesc }: TicketStatusBadgeProps) {
 
   // Match based on normalized description
   if (normalizedStatusDesc.includes('para fazer') || normalizedStatusDesc.includes('open') || normalizedStatusDesc.includes('aberto')) {
-    config = { label: 'Para fazer', icon: <CircleDot className="h-3 w-3" />, color: 'bg-blue-500 hover:bg-blue-600', textColor: 'text-white' };
+    config = { label: 'Para Fazer', icon: <CircleDot className="h-3 w-3" />, color: 'bg-blue-500 hover:bg-blue-600', textColor: 'text-white' };
   } else if (normalizedStatusDesc.includes('em análise') || normalizedStatusDesc.includes('em analise')) {
     config = { label: 'Em Análise', icon: <Search className="h-3 w-3" />, color: 'bg-purple-500 hover:bg-purple-600', textColor: 'text-white' };
   } else if (normalizedStatusDesc.includes('em andamento') || normalizedStatusDesc.includes('in progress')) {
