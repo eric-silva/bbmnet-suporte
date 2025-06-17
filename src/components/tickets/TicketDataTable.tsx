@@ -156,7 +156,7 @@ export function TicketDataTable({ columns, data }: TicketDataTableProps) {
     <div className="space-y-4 p-4 bg-card rounded-lg shadow-lg">
       <div className="flex items-center justify-between gap-2">
         <Input
-          placeholder="Filtrar todas as colunas..."
+          placeholder="Filtrar todas as colunas... "
           value={globalFilter ?? ''}
           onChange={(event) => setGlobalFilter(event.target.value)}
           className="max-w-sm h-10"
