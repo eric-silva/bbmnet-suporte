@@ -7,6 +7,7 @@ interface DecodedToken {
   userId: string;
   email: string;
   name: string;
+  fotoUrl?: string | null;
   [key: string]: any;
 }
 
@@ -23,7 +24,8 @@ async function authenticateAndEnrichRequest(request: NextRequest) {
 
     try {
       const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-      const { payload } = await jwtVerify(token, secret);
+      const { payload } = await jwtVerify(token, secret) as { payload: DecodedToken };
+
 
       if (
         !payload ||
@@ -32,6 +34,7 @@ async function authenticateAndEnrichRequest(request: NextRequest) {
         !payload.email ||
         !payload.name
       ) {
+        console.error('Middleware: Invalid token payload structure:', payload);
         throw new Error('Invalid token payload: missing required fields');
       }
 
@@ -39,12 +42,20 @@ async function authenticateAndEnrichRequest(request: NextRequest) {
       enrichedHeaders.set('X-User-Id', String(payload.userId));
       enrichedHeaders.set('X-User-Email', String(payload.email));
       enrichedHeaders.set('X-User-Name', String(payload.name));
+      if (payload.fotoUrl) {
+        enrichedHeaders.set('X-User-FotoUrl', payload.fotoUrl);
+      }
       return { isAuthenticated: true, user: payload, headers: enrichedHeaders };
     } catch (err: any) {
-      console.error('Token verification failed in middleware:', err);
       let clientErrorMessage = 'Authentication failed: Invalid or expired token.';
       if (err.code === 'ERR_JWT_EXPIRED') {
         clientErrorMessage = 'Authentication failed: Token has expired.';
+        console.warn('Middleware: Token verification failed - Token expired.');
+      } else if (err.name === 'JsonWebTokenError' || err.code === 'ERR_JWS_INVALID' || err.code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED') {
+        clientErrorMessage = 'Authentication failed: Token signature is invalid.';
+        console.error('CRITICAL: JWT signature is invalid. Check JWT_SECRET consistency and value. Error:', err.message);
+      } else {
+        console.error('Middleware: Token verification failed with an unexpected error:', err.message, err.code, err.name);
       }
       return { isAuthenticated: false, error: clientErrorMessage, status: 401, headers: request.headers };
     }
@@ -55,9 +66,8 @@ async function authenticateAndEnrichRequest(request: NextRequest) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Public API routes that do not require authentication
   const publicApiRoutes = [
-    '/api/auth/login', 
+    '/api/auth/login',
   ];
 
   if (pathname.startsWith('/api/')) {
@@ -65,7 +75,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // All other API routes require authentication
     const authResult = await authenticateAndEnrichRequest(request);
     if (!authResult.isAuthenticated || !authResult.user) {
       return new NextResponse(JSON.stringify({ message: authResult.error || 'Authentication required.' }), {
@@ -73,8 +82,7 @@ export async function middleware(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    
-    // Token is valid, proceed with the enriched headers
+
     return NextResponse.next({
         request: {
             headers: authResult.headers,
@@ -82,11 +90,9 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  // For non-API routes, let Next.js handle them (client-side routing will manage redirects based on session)
   return NextResponse.next();
 }
 
-// Apply middleware to all API routes
 export const config = {
-  matcher: ['/api/:path*'], 
+  matcher: ['/api/:path*'],
 };
