@@ -121,14 +121,14 @@ export async function POST(request: NextRequest) {
     const tipoRecord = await prisma.tipo.findUnique({ where: { descricao: data.type } });
     const ambienteRecord = await prisma.ambiente.findUnique({ where: { descricao: data.ambiente } });
     const origemRecord = await prisma.origem.findUnique({ where: { descricao: data.origem } });
-    const situacaoRecord = await prisma.situacao.findUnique({ where: { descricao: "Para fazer" } }); 
+    const situacaoRecord = await prisma.situacao.findUnique({ where: { descricao: "Para Fazer" } }); 
 
     const missingLookups = [
         !prioridadeRecord ? `Prioridade '${data.priority}'` : null,
         !tipoRecord ? `Tipo '${data.type}'` : null,
         !ambienteRecord ? `Ambiente '${data.ambiente}'` : null,
         !origemRecord ? `Origem '${data.origem}'` : null,
-        !situacaoRecord ? `Situação 'Para fazer'` : null,
+        !situacaoRecord ? `Situação 'Para Fazer'` : null,
       ].filter(Boolean);
 
     if (missingLookups.length > 0) {
