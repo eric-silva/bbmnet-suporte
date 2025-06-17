@@ -46,8 +46,8 @@ export interface Ticket {
   responsavelId?: string | null;
   responsavel?: Usuario | null;
 
-  evidencias: string;
-  anexos?: string | null;
+  evidencias: string; // Will store JSON string of filenames
+  anexos?: string | null; // Will store JSON string of filenames
   inicioAtendimento?: string | null;
   terminoAtendimento?: string | null;
   resolutionDetails?: string | null;
@@ -67,8 +67,8 @@ export interface TicketFormData {
   responsavelEmail?: string | null;
   status?: string;
   resolutionDetails?: string | null;
-  evidencias: string;
-  anexos?: string | null;
+  evidencias: string[]; // Array of filenames
+  anexos?: string[] | null; // Array of filenames
   ambiente: string;
   origem: string;
 }
@@ -99,3 +99,4 @@ export interface MenuItem {
 export interface StructuredMenuItem extends MenuItem {
   subMenus: MenuItem[];
 }
+

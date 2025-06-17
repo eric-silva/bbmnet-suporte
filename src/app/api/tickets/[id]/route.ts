@@ -3,12 +3,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { PERMITTED_ASSIGNEES } from '@/lib/constants';
-// Removed import of *Values from '@/types' as they are no longer used here
-import type { TicketFormData } from '@/types';
+// TicketFormData is now more aligned with what the form prepares (arrays of filenames)
+import type { TicketFormData as ApiTicketUpdatePayload } from '@/types';
 
 
-// Zod schema for incoming ticket data (uses string descriptions from TicketFormData)
-// Validation of whether these descriptions exist in DB is handled by Prisma lookups below.
+// Zod schema for incoming ticket data for updates
 const UpdateTicketApiSchema = z.object({
   problemDescription: z.string().min(10, 'A descrição do problema deve ter pelo menos 10 caracteres.'),
   priority: z.string().min(1, "Prioridade é obrigatória."),
@@ -16,8 +15,8 @@ const UpdateTicketApiSchema = z.object({
   responsavelEmail: z.string().email({ message: "E-mail inválido para responsável." }).nullable().or(z.literal('')),
   status: z.string().min(1, "Situação é obrigatória."),
   resolutionDetails: z.string().optional().nullable(),
-  evidencias: z.string().min(1, 'O campo Evidências é obrigatório.'),
-  anexos: z.string().optional().nullable(),
+  evidencias: z.array(z.string()).min(1, 'Pelo menos uma evidência é obrigatória.'), // Expect array of filenames
+  anexos: z.array(z.string()).optional().nullable(), // Expect array of filenames or null
   ambiente: z.string().min(1, "Ambiente é obrigatório."),
   origem: z.string().min(1, "Origem é obrigatória."),
 });
@@ -77,7 +76,7 @@ export async function PUT(
       return NextResponse.json({ message: 'Ticket not found' }, { status: 404 });
     }
 
-    const body: TicketFormData = await request.json();
+    const body: ApiTicketUpdatePayload = await request.json(); // Expects arrays of filenames
     const parsed = UpdateTicketApiSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -86,7 +85,6 @@ export async function PUT(
     const data = parsed.data;
     const now = new Date();
 
-    // Handle responsavel connection
     let responsavelConnectDisconnect = {};
     if (data.responsavelEmail && data.responsavelEmail !== '') {
       const responsavelDetails = PERMITTED_ASSIGNEES.find(u => u.email === data.responsavelEmail) ||
@@ -104,7 +102,6 @@ export async function PUT(
       responsavelConnectDisconnect = { responsavel: { disconnect: true } };
     }
 
-    // Look up related entities
     const prioridadeRecord = await prisma.prioridade.findUnique({ where: { descricao: data.priority } });
     const tipoRecord = await prisma.tipo.findUnique({ where: { descricao: data.type } });
     const ambienteRecord = await prisma.ambiente.findUnique({ where: { descricao: data.ambiente } });
@@ -123,7 +120,6 @@ export async function PUT(
       return NextResponse.json({ message: `Could not find required lookup values: ${missingLookups.join(', ')}. Please ensure these exist in the database.` }, { status: 400 });
     }
 
-    // Handle inicioAtendimento and terminoAtendimento logic
     let inicioAtendimento = existingTicket.inicioAtendimento;
     if (existingTicket.situacao.descricao === 'Para fazer' && situacaoRecord!.descricao === 'Em Andamento' && !existingTicket.inicioAtendimento) {
       inicioAtendimento = now;
@@ -136,6 +132,9 @@ export async function PUT(
       terminoAtendimento = null;
     }
 
+    const evidenciasJsonString = JSON.stringify(data.evidencias);
+    const anexosJsonString = data.anexos ? JSON.stringify(data.anexos) : null;
+
     const updatedTicketData = {
       problemDescription: data.problemDescription,
       prioridade: { connect: { id: prioridadeRecord!.id } },
@@ -144,8 +143,8 @@ export async function PUT(
       origem: { connect: { id: origemRecord!.id } },
       situacao: { connect: { id: situacaoRecord!.id } },
       ...responsavelConnectDisconnect,
-      evidencias: data.evidencias,
-      anexos: data.anexos,
+      evidencias: evidenciasJsonString,
+      anexos: anexosJsonString,
       resolutionDetails: data.resolutionDetails,
       updatedAt: now,
       inicioAtendimento,

@@ -51,9 +51,9 @@ async function authenticateAndEnrichRequest(request: NextRequest) {
       if (err.code === 'ERR_JWT_EXPIRED') {
         clientErrorMessage = 'Authentication failed: Token has expired.';
         console.warn('Middleware: Token verification failed - Token expired.');
-      } else if (err.name === 'JsonWebTokenError' || err.code === 'ERR_JWS_INVALID' || err.code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED') {
+      } else if (err.code === 'ERR_JWS_INVALID' || err.code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED') {
         clientErrorMessage = 'Authentication failed: Token signature is invalid.';
-        console.error('CRITICAL: JWT signature is invalid. Check JWT_SECRET consistency and value. Error:', err.message);
+        console.error('CRITICAL: JWT signature is invalid. Check JWT_SECRET consistency and value. Error:', err.message, err.name, err.code);
       } else {
         console.error('Middleware: Token verification failed with an unexpected error:', err.message, err.code, err.name);
       }
