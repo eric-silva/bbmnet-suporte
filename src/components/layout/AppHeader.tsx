@@ -14,9 +14,9 @@ export function AppHeader() {
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         {/* A classe 'container' adiciona padding responsivo e max-width, lidando com as margens */}
-        <div className="container flex h-16 items-center">
+        <div className="flex w-full h-16 items-center">
           {/* Logo e Nome do App - alinhado à esquerda */}
-          <Link href="/" className="mr-6 flex items-center space-x-2">
+          <Link href="/" className="mx-6 flex items-center space-x-2">
             <LifeBuoy className="h-6 w-6 text-primary" />
             <span className="font-bold font-headline sm:inline-block text-lg">
               BBMNET Suporte
@@ -40,7 +40,7 @@ export function AppHeader() {
 
           {/* Navegação do Usuário - alinhada à direita */}
           {/* Removido justify-end e space-x-4 pois UserNav é o único filho direto aqui e sua posição é determinada pelo flex-grow do elemento central */}
-          <div className="flex items-center">
+          <div className="mx-6 flex items-center">
             <UserNav />
           </div>
         </div>
