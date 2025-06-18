@@ -275,7 +275,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
                   size="sm"
                   onClick={async () => {
                     toast({ title: "Simulando Download...", description: `Preparando para baixar "${item.nome}" (${item.nomeObjeto})`});
-                    const result = await simulateDownloadFromBucket(item.nomeObjeto);
+                    const result = await simulateDownloadFromBucket(item.nome);
                     toast({ title: result.success ? "Download Simulado" : "Falha na Simulação", description: result.message});
                   }}
                   className="ml-2 text-primary hover:text-primary/80"
