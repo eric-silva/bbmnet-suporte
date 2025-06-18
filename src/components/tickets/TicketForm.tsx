@@ -6,8 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-// Textarea no longer used for evidencias/anexos
-import { Input } from '@/components/ui/input'; // For file input
+import { Input } from '@/components/ui/input'; 
 import {
   Select,
   SelectContent,
@@ -18,13 +17,14 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import type { Ticket, Prioridade, Tipo, Situacao, Ambiente, Origem, TicketFormData } from '@/types';
+import type { Ticket, Prioridade, Tipo, Situacao, Ambiente, Origem, TicketFormData, TicketEvidencia, TicketAnexo } from '@/types';
 import { AiAssigneeSuggestion } from './AiAssigneeSuggestion';
 import { useSession } from '@/components/auth/AppProviders';
 import { Loader2, FileText, Download, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Usuario } from '@/types';
 import { Textarea } from '@/components/ui/textarea';
+import { simulateDownloadFromBucket } from '@/lib/utils';
 
 
 const ticketFormSchema = z.object({
@@ -34,8 +34,8 @@ const ticketFormSchema = z.object({
   responsavelEmail: z.string().email({ message: "E-mail inválido." }).nullable().or(z.literal('')).default('').optional(),
   status: z.string().min(1, "Selecione uma situação.").optional(),
   resolutionDetails: z.string().optional().nullable(),
-  evidencias: z.array(z.string()).min(1, 'Pelo menos uma evidência é obrigatória.'),
-  anexos: z.array(z.string()).optional().nullable(),
+  evidencias: z.array(z.string()).min(1, 'Pelo menos uma evidência (nome de arquivo) é obrigatória.'), // original filenames
+  anexos: z.array(z.string()).optional().nullable(), // original filenames
   ambiente: z.string().min(1, "Selecione um ambiente."),
   origem: z.string().min(1, "Selecione uma origem."),
 });
@@ -60,9 +60,9 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
   const [environmentOptions, setEnvironmentOptions] = useState<Ambiente[]>([]);
   const [originOptions, setOriginOptions] = useState<Origem[]>([]);
 
-  // State for displaying filenames from existing ticket
-  const [existingEvidenciasNames, setExistingEvidenciasNames] = useState<string[]>([]);
-  const [existingAnexosNames, setExistingAnexosNames] = useState<string[]>([]);
+  // State for displaying existing files (from fetched ticket object)
+  const [existingEvidencias, setExistingEvidencias] = useState<TicketEvidencia[]>([]);
+  const [existingAnexos, setExistingAnexos] = useState<TicketAnexo[]>([]);
 
 
   const { register, handleSubmit, control, formState: { errors }, watch, setValue, reset } = useForm<TicketFormData>({
@@ -74,8 +74,8 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
       responsavelEmail: '',
       status: '',
       resolutionDetails: '',
-      evidencias: [], // Initialize as empty array for filenames
-      anexos: [],   // Initialize as empty array for filenames
+      evidencias: [], // Initialize as empty array for original filenames
+      anexos: [],   // Initialize as empty array for original filenames
       ambiente: '',
       origem: '',
     },
@@ -98,10 +98,13 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
         fetch('/api/meta/origins', { headers }),
       ]);
 
-      // Simplified error checking for brevity
       if (!assigneesRes.ok) throw new Error('Failed to fetch assignees');
-      // ... (add checks for other responses)
-
+      if (!prioritiesRes.ok) throw new Error('Failed to fetch priorities');
+      if (!typesRes.ok) throw new Error('Failed to fetch types');
+      if (!statusesRes.ok) throw new Error('Failed to fetch statuses');
+      if (!environmentsRes.ok) throw new Error('Failed to fetch environments');
+      if (!originsRes.ok) throw new Error('Failed to fetch origins');
+      
       const assigneesData = await assigneesRes.json();
       const prioritiesData = await prioritiesRes.json();
       const typesData = await typesRes.json();
@@ -125,29 +128,16 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
         resolutionDetails: ticket?.resolutionDetails || '',
         ambiente: ticket?.ambiente.descricao || environmentsData.find((e: Ambiente) => e.descricao === "Produção")?.descricao || environmentsData[0]?.descricao || '',
         origem: ticket?.origem.descricao || originsData.find((o: Origem) => o.descricao === "Sala de Negociação")?.descricao || originsData[0]?.descricao || '',
-        evidencias: [],
-        anexos: [],
+        evidencias: [], // Holds original filenames for form value
+        anexos: [],     // Holds original filenames for form value
       };
 
       if (formMode === 'edit' && ticket) {
-        try {
-          const parsedEvidencias = ticket.evidencias ? JSON.parse(ticket.evidencias) : [];
-          setExistingEvidenciasNames(Array.isArray(parsedEvidencias) ? parsedEvidencias : []);
-          initialValues.evidencias = Array.isArray(parsedEvidencias) ? parsedEvidencias : [];
-        } catch (e) {
-          console.error("Error parsing ticket.evidencias", e);
-          setExistingEvidenciasNames([]);
-          initialValues.evidencias = [];
-        }
-        try {
-          const parsedAnexos = ticket.anexos ? JSON.parse(ticket.anexos) : [];
-          setExistingAnexosNames(Array.isArray(parsedAnexos) ? parsedAnexos : []);
-          initialValues.anexos = Array.isArray(parsedAnexos) ? parsedAnexos : [];
-        } catch (e) {
-          console.error("Error parsing ticket.anexos", e);
-          setExistingAnexosNames([]);
-          initialValues.anexos = [];
-        }
+        setExistingEvidencias(ticket.ticketEvidencias || []);
+        initialValues.evidencias = (ticket.ticketEvidencias || []).map(ev => ev.nome);
+
+        setExistingAnexos(ticket.ticketAnexos || []);
+        initialValues.anexos = (ticket.ticketAnexos || []).map(an => an.nome);
       }
       reset(initialValues as TicketFormData);
 
@@ -165,24 +155,47 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, fieldName: 'evidencias' | 'anexos') => {
     const files = event.target.files;
-    if (files) {
+    if (files && files.length > 0) {
       const filenames = Array.from(files).map(file => file.name);
       setValue(fieldName, filenames, { shouldValidate: true });
-      // For edit mode, new files replace old ones. Clear existing names display if new files selected.
-      if (fieldName === 'evidencias') setExistingEvidenciasNames([]);
-      if (fieldName === 'anexos') setExistingAnexosNames([]);
+      // Clear existing display states as new files replace them for submission
+      if (fieldName === 'evidencias') setExistingEvidencias([]);
+      if (fieldName === 'anexos') setExistingAnexos([]);
     } else {
-      setValue(fieldName, [], { shouldValidate: true });
+      // If files are cleared, and it's edit mode, revert to displaying original ticket files
+      if (formMode === 'edit' && ticket) {
+        if (fieldName === 'evidencias') {
+          setValue('evidencias', (ticket.ticketEvidencias || []).map(ev => ev.nome), { shouldValidate: true });
+          setExistingEvidencias(ticket.ticketEvidencias || []);
+        }
+        if (fieldName === 'anexos') {
+          setValue('anexos', (ticket.ticketAnexos || []).map(an => an.nome), { shouldValidate: true });
+          setExistingAnexos(ticket.ticketAnexos || []);
+        }
+      } else {
+         setValue(fieldName, [], { shouldValidate: true });
+      }
     }
   };
 
   const handleFormSubmit = (data: TicketFormData) => {
     startTransition(async () => {
       const dataToSend = { ...data };
-       // Ensure status is set for creation if not already
       if (formMode === 'create' && !dataToSend.status && statusOptions.length > 0) {
         dataToSend.status = statusOptions.find(s => s.descricao === "Para fazer")?.descricao || statusOptions[0]?.descricao || '';
       }
+
+      // If in edit mode and the file input for evidences/anexos was not touched (so form value is still original names of existing files),
+      // ensure we are sending these original filenames. If new files were selected, data.evidencias/anexos already have new names.
+      if (formMode === 'edit' && ticket) {
+        const currentFormEvidencias = watch('evidencias');
+        const originalEvidenciasNames = (ticket.ticketEvidencias || []).map(e => e.nome);
+        // If form evidences are same as original, it means user didn't select new files via input for evidences.
+        // So, we rely on currentFormEvidencias (which would be original names). This is already correct.
+
+        // Similar logic for anexos if needed, but file input onChange handles replacement.
+      }
+
 
       const result = await onSubmit(dataToSend, ticket?.id);
       if (result.success) {
@@ -191,7 +204,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
           description: `Ticket ${result.ticket?.numeroTicket || result.ticket?.id} foi ${formMode === 'create' ? 'criado' : 'atualizado'} com sucesso.`,
           variant: 'default',
         });
-        // onCancel(); // Call onCancel to close modal, it's passed from parent
+        // onCancel(); // Parent should handle closing
       } else {
          const errorMessages = result.error ?
           (typeof result.error === 'string' ? result.error :
@@ -213,29 +226,61 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
 
   const isLoadingOptions = priorityOptions.length === 0 || typeOptions.length === 0 || statusOptions.length === 0 || environmentOptions.length === 0 || originOptions.length === 0;
 
-  const currentEvidenciasFilenames = watch('evidencias');
-  const currentAnexosFilenames = watch('anexos');
+  // Get current filenames from form state (these are original filenames)
+  const currentFormEvidenciasFilenames = watch('evidencias');
+  const currentFormAnexosFilenames = watch('anexos');
 
-  const renderFileNames = (filenames: string[] | null | undefined, fieldType: 'evidencias' | 'anexos', existingNames: string[]) => {
-    const displayNames = (filenames && filenames.length > 0) ? filenames : existingNames;
-    if (!displayNames || displayNames.length === 0) return null;
+
+  const renderFilesList = (
+    filesToDisplay: TicketEvidencia[] | TicketAnexo[], // These are full objects from existing ticket
+    selectedFilenames: string[] | null | undefined, // These are original filenames from file input
+    fieldType: 'evidencias' | 'anexos'
+  ) => {
+    const label = fieldType === 'evidencias' ? 'Evidências' : 'Anexos';
+    let displayItems: { nome: string, nomeObjeto?: string }[] = [];
+
+    // If new files are selected via input, those take precedence for display.
+    // Otherwise, show existing files from the ticket.
+    if (selectedFilenames && selectedFilenames.length > 0 && 
+        (fieldType === 'evidencias' ? existingEvidencias.length === 0 : existingAnexos.length === 0) ) {
+       // This condition means: new files were selected, AND we cleared the 'existingXxx' state
+       // because the file input was interacted with.
+      displayItems = selectedFilenames.map(name => ({ nome: name }));
+    } else if (filesToDisplay.length > 0) {
+      displayItems = filesToDisplay.map(file => ({ nome: file.nome, nomeObjeto: file.nomeObjeto }));
+    } else if (selectedFilenames && selectedFilenames.length > 0) {
+      // Fallback if filesToDisplay is empty but selectedFilenames has items (e.g. create mode)
+      displayItems = selectedFilenames.map(name => ({ nome: name }));
+    }
+
+
+    if (displayItems.length === 0) return null;
 
     return (
       <div className="mt-2 space-y-1 text-sm">
-        <p className="font-medium text-muted-foreground">{fieldType === 'evidencias' ? 'Arquivos de evidência selecionados/existentes:' : 'Anexos selecionados/existentes:'}</p>
-        <ul className="list-disc pl-5">
-          {displayNames.map((name, index) => (
-            <li key={`${fieldType}-${index}`} className="flex items-center justify-between">
-              <span className="truncate" title={name}>{name}</span>
-              {(existingNames.includes(name) && formMode === 'edit') && ( // Only show download for existing files in edit mode
+        <p className="font-medium text-muted-foreground">
+          {filesToDisplay.length > 0 && selectedFilenames?.length === 0 ? `Arquivos de ${label.toLowerCase()} existentes:` : `Arquivos de ${label.toLowerCase()} selecionados:`}
+        </p>
+        <ul className="list-disc pl-5 space-y-1">
+          {displayItems.map((item, index) => (
+            <li key={`${fieldType}-${index}-${item.nome}`} className="flex items-center justify-between bg-muted/30 p-2 rounded-md">
+              <span className="truncate flex items-center" title={item.nome}>
+                <FileText className="h-4 w-4 mr-2 shrink-0" />
+                {item.nome}
+              </span>
+              {item.nomeObjeto && formMode === 'edit' && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => toast({ title: "Download Simulado", description: `Download de "${name}" não implementado.`})}
-                  className="ml-2"
+                  onClick={async () => {
+                    toast({ title: "Simulando Download...", description: `Preparando para baixar "${item.nome}" (${item.nomeObjeto})`});
+                    const result = await simulateDownloadFromBucket(item.nomeObjeto);
+                    toast({ title: result.success ? "Download Simulado" : "Falha na Simulação", description: result.message});
+                  }}
+                  className="ml-2 text-primary hover:text-primary/80"
                 >
-                  <Download className="h-3 w-3 mr-1" />
+                  <Download className="h-4 w-4 mr-1" />
                   Baixar
                 </Button>
               )}
@@ -380,7 +425,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
               onChange={(e) => handleFileChange(e, 'evidencias')}
               disabled={isPending}
             />
-            {renderFileNames(currentEvidenciasFilenames, 'evidencias', existingEvidenciasNames)}
+            {renderFilesList(existingEvidencias, currentFormEvidenciasFilenames, 'evidencias')}
             {errors.evidencias && <p className="text-sm text-destructive mt-1">{errors.evidencias.message}</p>}
           </div>
 
@@ -394,7 +439,7 @@ export function TicketForm({ ticket, onSubmit, onCancel, formMode }: TicketFormP
               onChange={(e) => handleFileChange(e, 'anexos')}
               disabled={isPending}
             />
-            {renderFileNames(currentAnexosFilenames, 'anexos', existingAnexosNames)}
+             {renderFilesList(existingAnexos, currentFormAnexosFilenames, 'anexos')}
             {errors.anexos && <p className="text-sm text-destructive mt-1">{errors.anexos.message}</p>}
           </div>
 

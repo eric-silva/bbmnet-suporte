@@ -3,9 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { PERMITTED_ASSIGNEES } from '@/lib/constants';
-// TicketFormData is now more aligned with what the form prepares (arrays of filenames)
-import type { TicketFormData as ApiTicketUpdatePayload } from '@/types';
-
+import { generateUniqueFilename } from '@/lib/utils';
+import type { TicketFormData as ApiTicketUpdatePayload } from '@/types'; // This type already expects string[] for evidences/anexos
 
 // Zod schema for incoming ticket data for updates
 const UpdateTicketApiSchema = z.object({
@@ -15,8 +14,8 @@ const UpdateTicketApiSchema = z.object({
   responsavelEmail: z.string().email({ message: "E-mail inválido para responsável." }).nullable().or(z.literal('')),
   status: z.string().min(1, "Situação é obrigatória."),
   resolutionDetails: z.string().optional().nullable(),
-  evidencias: z.array(z.string()).min(1, 'Pelo menos uma evidência é obrigatória.'), // Expect array of filenames
-  anexos: z.array(z.string()).optional().nullable(), // Expect array of filenames or null
+  evidencias: z.array(z.string()).min(1, 'Pelo menos uma evidência é obrigatória.'), // Expect array of original filenames
+  anexos: z.array(z.string()).optional().nullable(), // Expect array of original filenames or null
   ambiente: z.string().min(1, "Ambiente é obrigatório."),
   origem: z.string().min(1, "Origem é obrigatória."),
 });
@@ -37,6 +36,8 @@ export async function GET(
         solicitante: true,
         responsavel: true,
         situacao: true,
+        ticketEvidencias: true,
+        ticketAnexos: true,
       }
     });
 
@@ -76,7 +77,7 @@ export async function PUT(
       return NextResponse.json({ message: 'Ticket not found' }, { status: 404 });
     }
 
-    const body: ApiTicketUpdatePayload = await request.json(); // Expects arrays of filenames
+    const body: ApiTicketUpdatePayload = await request.json(); 
     const parsed = UpdateTicketApiSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -132,10 +133,8 @@ export async function PUT(
       terminoAtendimento = null;
     }
 
-    const evidenciasJsonString = JSON.stringify(data.evidencias);
-    const anexosJsonString = data.anexos ? JSON.stringify(data.anexos) : null;
-
-    const updatedTicketData = {
+    // Main ticket data for update (excluding evidences and attachments)
+    const ticketUpdatePayload = {
       problemDescription: data.problemDescription,
       prioridade: { connect: { id: prioridadeRecord!.id } },
       tipo: { connect: { id: tipoRecord!.id } },
@@ -143,21 +142,49 @@ export async function PUT(
       origem: { connect: { id: origemRecord!.id } },
       situacao: { connect: { id: situacaoRecord!.id } },
       ...responsavelConnectDisconnect,
-      evidencias: evidenciasJsonString,
-      anexos: anexosJsonString,
       resolutionDetails: data.resolutionDetails,
       updatedAt: now,
       inicioAtendimento,
       terminoAtendimento,
     };
 
-    const updatedTicket = await prisma.ticket.update({
-      where: { id: params.id },
-      data: updatedTicketData,
-      include: {
-        prioridade: true, tipo: true, ambiente: true, origem: true,
-        solicitante: true, responsavel: true, situacao: true
-      }
+    const evidencesToCreate = data.evidencias.map(originalFilename => ({
+        nome: originalFilename,
+        nomeObjeto: generateUniqueFilename(originalFilename),
+        tipo: "outro", 
+    }));
+
+    const attachmentsToCreate = (data.anexos || []).map(originalFilename => ({
+        nome: originalFilename,
+        nomeObjeto: generateUniqueFilename(originalFilename),
+        tipo: "outro",
+    }));
+
+    const updatedTicket = await prisma.$transaction(async (tx) => {
+      // 1. Delete existing evidences and attachments
+      await tx.ticketEvidencia.deleteMany({ where: { ticketId: params.id } });
+      await tx.ticketAnexo.deleteMany({ where: { ticketId: params.id } });
+
+      // 2. Update the ticket itself
+      const mainTicket = await tx.ticket.update({
+        where: { id: params.id },
+        data: {
+          ...ticketUpdatePayload,
+          // 3. Create new evidences and attachments
+          ticketEvidencias: {
+            create: evidencesToCreate,
+          },
+          ticketAnexos: {
+            create: attachmentsToCreate.length > 0 ? attachmentsToCreate : undefined,
+          },
+        },
+        include: {
+          prioridade: true, tipo: true, ambiente: true, origem: true,
+          solicitante: true, responsavel: true, situacao: true,
+          ticketEvidencias: true, ticketAnexos: true,
+        }
+      });
+      return mainTicket;
     });
 
     return NextResponse.json(updatedTicket);

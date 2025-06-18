@@ -23,6 +23,26 @@ export interface Usuario {
   updatedAt: string;
 }
 
+export interface TicketEvidencia {
+  id: string;
+  nome: string;
+  nomeObjeto: string;
+  tipo: string;
+  ticketId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TicketAnexo {
+  id: string;
+  nome: string;
+  nomeObjeto: string;
+  tipo: string;
+  ticketId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Ticket {
   id: string;
   numeroTicket: string;
@@ -46,8 +66,11 @@ export interface Ticket {
   responsavelId?: string | null;
   responsavel?: Usuario | null;
 
-  evidencias: string; // Will store JSON string of filenames
-  anexos?: string | null; // Will store JSON string of filenames
+  // evidencias: string; // Replaced by ticketEvidencias
+  // anexos?: string | null; // Replaced by ticketAnexos
+  ticketEvidencias: TicketEvidencia[];
+  ticketAnexos: TicketAnexo[];
+
   inicioAtendimento?: string | null;
   terminoAtendimento?: string | null;
   resolutionDetails?: string | null;
@@ -60,6 +83,7 @@ export interface Ticket {
 }
 
 // For TicketForm Zod schema and API communication
+// evidencias and anexos here will be arrays of *original filenames* from the form.
 export interface TicketFormData {
   problemDescription: string;
   priority: string;
@@ -67,8 +91,8 @@ export interface TicketFormData {
   responsavelEmail?: string | null;
   status?: string;
   resolutionDetails?: string | null;
-  evidencias: string[]; // Array of filenames
-  anexos?: string[] | null; // Array of filenames
+  evidencias: string[]; // Array of original filenames
+  anexos?: string[] | null; // Array of original filenames
   ambiente: string;
   origem: string;
 }
@@ -99,4 +123,3 @@ export interface MenuItem {
 export interface StructuredMenuItem extends MenuItem {
   subMenus: MenuItem[];
 }
-

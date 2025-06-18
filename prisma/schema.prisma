@@ -5,114 +5,124 @@ datasource db {
 }
 
 generator client {
-  provider        = "prisma-client-js"
-  binaryTargets   = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+  provider = "prisma-client-js"
 }
 
-model Menu {
-  id              String    @id @default(cuid())
-  titulo          String
-  nomeIcone       String
-  menuPrincipalId String?
-  menuPrincipal   Menu?     @relation("SubMenus", fields: [menuPrincipalId], references: [id], onDelete: Cascade)
-  subMenus        Menu[]    @relation("SubMenus")
-  isAtivo         Boolean   @default(true)
-  path            String    @default("#")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+model Usuario {
+  id                String    @id @default(cuid())
+  nome              String
+  email             String    @unique
+  hashedPassword    String?
+  fotoUrl           String?
+  isAtivo           Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  ticketsCriados    Ticket[]  @relation("SolicitanteTickets")
+  ticketsAtribuidos Ticket[]  @relation("ResponsavelTickets")
 }
 
 model Prioridade {
   id        String   @id @default(cuid())
-  descricao String   @unique @db.Text
+  descricao String   @unique
   tickets   Ticket[]
 }
 
 model Tipo {
   id        String   @id @default(cuid())
-  descricao String   @unique @db.Text
-  tickets   Ticket[]
-}
-
-model Situacao {
-  id        String   @id @default(cuid())
-  descricao String   @unique @db.Text
+  descricao String   @unique
   tickets   Ticket[]
 }
 
 model Ambiente {
   id        String   @id @default(cuid())
-  descricao String   @unique @db.Text
+  descricao String   @unique
   tickets   Ticket[]
 }
 
 model Origem {
   id        String   @id @default(cuid())
-  descricao String   @unique @db.Text
+  descricao String   @unique
   tickets   Ticket[]
 }
 
-model Usuario {
-  id                 String    @id @default(cuid())
-  nome               String    @db.Text
-  email              String    @unique
-  hashedPassword     String?
-  fotoUrl            String?   @db.Text
-  isAtivo            Boolean   @default(true)
-  ticketsCriados     Ticket[]  @relation("TicketsCriadosPeloUsuario")
-  ticketsAtribuidos  Ticket[]  @relation("TicketsAtribuidosAoUsuario")
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+model Situacao {
+  id        String   @id @default(cuid())
+  descricao String   @unique
+  tickets   Ticket[]
+}
+
+model Menu {
+  id              String   @id @default(cuid())
+  titulo          String
+  nomeIcone       String
+  menuPrincipalId String?
+  isAtivo         Boolean  @default(true)
+  path            String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  menuPrincipal   Menu?    @relation("SubMenus", fields: [menuPrincipalId], references: [id])
+  subMenus        Menu[]   @relation("SubMenus")
 }
 
 model Ticket {
-  id                 String    @id @default(cuid())
-  numeroTicket       String    @unique
-  problemDescription String    @db.Text // Renamed from 'descricao' for clarity
-  prioridadeId       String
-  prioridade         Prioridade @relation(fields: [prioridadeId], references: [id])
-  tipoId             String
-  tipo               Tipo      @relation(fields: [tipoId], references: [id])
-  ambienteId         String
-  ambiente           Ambiente  @relation(fields: [ambienteId], references: [id])
-  origemId           String
-  origem             Origem    @relation(fields: [origemId], references: [id])
-  solicitanteId      String
-  solicitante        Usuario   @relation("TicketsCriadosPeloUsuario", fields: [solicitanteId], references: [id])
-  responsavelId      String?
-  responsavel        Usuario?  @relation("TicketsAtribuidosAoUsuario", fields: [responsavelId], references: [id])
-  evidencias         String    @db.Text
-  anexos             String?   @db.Text
-  inicioAtendimento  DateTime?
-  terminoAtendimento DateTime?
-  resolutionDetails  String?   @db.Text
-  situacaoId         String
-  situacao           Situacao  @relation(fields: [situacaoId], references: [id])
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  numeroTicket        String    @unique
+  problemDescription  String
+  inicioAtendimento   DateTime?
+  terminoAtendimento  DateTime?
+  resolutionDetails   String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  anexo              TicketAnexo[]
-  evidencia          TicketEvidencia[]
-}
+  prioridadeId        String
+  prioridade          Prioridade @relation(fields: [prioridadeId], references: [id])
 
-model TicketAnexo {
-  id          String   @id @default(cuid())
-  ticketId    String
-  ticket      Ticket   @relation(fields: [ticketId], references: [id])
-  nome        String   @db.Text
-  tipo        String   @db.Text
-  nomeObjeto  String   @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  tipoId              String
+  tipo                Tipo       @relation(fields: [tipoId], references: [id])
+
+  ambienteId          String
+  ambiente            Ambiente   @relation(fields: [ambienteId], references: [id])
+
+  origemId            String
+  origem              Origem     @relation(fields: [origemId], references: [id])
+
+  solicitanteId       String
+  solicitante         Usuario    @relation("SolicitanteTickets", fields: [solicitanteId], references: [id])
+
+  responsavelId       String?
+  responsavel         Usuario?   @relation("ResponsavelTickets", fields: [responsavelId], references: [id])
+
+  situacaoId          String
+  situacao            Situacao   @relation(fields: [situacaoId], references: [id])
+
+  ticketEvidencias    TicketEvidencia[]
+  ticketAnexos        TicketAnexo[]
 }
 
 model TicketEvidencia {
   id          String   @id @default(cuid())
-  ticketId    String
-  ticket      Ticket   @relation(fields: [ticketId], references: [id])
-  nome        String   @db.Text
-  tipo        String   @db.Text
-  nomeObjeto  String   @db.Text
+  nome        String   // Original filename
+  nomeObjeto  String   // GUID_originalFilename
+  tipo        String   @default("outro") // File type/category, defaulting to "outro"
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  ticketId    String
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+}
+
+model TicketAnexo {
+  id          String   @id @default(cuid())
+  nome        String   // Original filename
+  nomeObjeto  String   // GUID_originalFilename
+  tipo        String   @default("outro") // File type/category, defaulting to "outro"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ticketId    String
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
 }
