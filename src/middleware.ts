@@ -1,5 +1,5 @@
 
-import type { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
@@ -47,12 +47,14 @@ async function authenticateAndEnrichRequest(request: NextRequest) {
       }
       return { isAuthenticated: true, user: payload, headers: enrichedHeaders };
     } catch (err: any) {
-      let clientErrorMessage = 'Authentication failed: Invalid or expired token.';
+      let clientErrorMessage = 'Falha na Autenticação: Token inválido ou expirado.';
       if (err.code === 'ERR_JWT_EXPIRED') {
-        clientErrorMessage = 'Authentication failed: Token has expired.';
+        clientErrorMessage = 'Falha na Autenticação: Token expirou.';
+        clientErrorMessage += ' Por favor, faça logout e login novamente.';
+
         console.warn('Middleware: Token verification failed - Token expired.');
       } else if (err.code === 'ERR_JWS_INVALID' || err.code === 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED') {
-        clientErrorMessage = 'Authentication failed: Token signature is invalid.';
+        clientErrorMessage = 'Falha na Autenticação: Assinatura do token é inválida.';
         console.error('CRITICAL: JWT signature is invalid. Check JWT_SECRET consistency and value. Error:', err.message, err.name, err.code);
       } else {
         console.error('Middleware: Token verification failed with an unexpected error:', err.message, err.code, err.name);
