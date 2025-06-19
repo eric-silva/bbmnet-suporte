@@ -10,8 +10,6 @@ export function sha1Convert(data: string): string {
   return crypto.createHash('sha1').update(data).digest('hex');
 }
 
-
-
 /**
  * Generates a unique filename by prepending a GUID (UUID) to the original filename.
  * @param originalFilename - The original name of the file.
